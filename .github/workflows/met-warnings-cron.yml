@@ -1,0 +1,38 @@
+name: MetMalaysia Warning Ingestion
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: met-warnings-cron
+  cancel-in-progress: false
+
+jobs:
+  ingest-warnings:
+    name: Capture MetMalaysia warnings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Call protected SDIP cron endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_ENDPOINT: https://sdip-blue.vercel.app/api/cron/met-warnings
+        run: |
+          response=$(curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --retry 2 \
+            --retry-delay 15 \
+            --max-time 90 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${CRON_ENDPOINT}")
+
+          echo "${response}"
