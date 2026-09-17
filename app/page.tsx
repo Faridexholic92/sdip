@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import LiveRiskRows from "@/components/LiveRiskRows";
 import LiveWeatherCard from "@/components/LiveWeatherCard";
+import OfficialAlert from "@/components/OfficialAlert";
 
 const SabahMap = dynamic(() => import("@/components/SabahMap"), {
   ssr: false,
@@ -39,10 +40,10 @@ const navigationIcons = [
 
 const kpis = [
   {
-    label: "Official alerts",
-    value: "—",
-    description: "Awaiting warning integration",
-    color: ""
+    label: "Official alert feed",
+    value: "Live",
+    description: "MetMalaysia warnings",
+    color: "orange"
   },
   {
     label: "Simulated notices",
@@ -53,23 +54,23 @@ const kpis = [
   {
     label: "Elevated areas",
     value: "01",
-    description: "Database output",
+    description: "Simulated risk output",
     color: "red"
   },
   {
-    label: "Districts monitored",
-    value: "01",
-    description: "Current database coverage",
+    label: "Weather location",
+    value: "Ranau",
+    description: "Official district forecast",
     color: ""
   },
   {
     label: "Data coverage",
     value: "68%",
-    description: "Medium confidence",
+    description: "Risk-data confidence",
     color: ""
   },
   {
-    label: "Last update",
+    label: "Data status",
     value: "Live",
     description: "MetMalaysia + Supabase",
     color: ""
@@ -86,7 +87,11 @@ const serviceHealth = [
     status: "CONNECTED"
   },
   {
-    name: "MetMalaysia",
+    name: "MetMalaysia Forecast",
+    status: "CONNECTED"
+  },
+  {
+    name: "MetMalaysia Warnings",
     status: "CONNECTED"
   },
   {
@@ -127,8 +132,6 @@ export default function Home() {
               {navigationIcons[index]}
 
               <span>{item}</span>
-
-              {item === "Alerts" && <em>01</em>}
             </button>
           ))}
         </nav>
@@ -136,7 +139,10 @@ export default function Home() {
         <div className="system">
           <i />
           Systems operational
-          <small>MetMalaysia + Supabase connected</small>
+
+          <small>
+            MetMalaysia + Supabase connected
+          </small>
         </div>
       </aside>
 
@@ -157,21 +163,7 @@ export default function Home() {
         </header>
 
         <div className="content">
-          <div className="advisory">
-            <b>SIMULATED ADVISORY</b>
-
-            <span>
-              <strong>
-                Prototype risk assessment available for selected
-                districts
-              </strong>
-
-              <small>
-                Refer to official authorities for confirmed warnings
-                and emergency instructions.
-              </small>
-            </span>
-          </div>
+          <OfficialAlert />
 
           <div className="kpis">
             {kpis.map((item) => (
@@ -219,8 +211,9 @@ export default function Home() {
                 </h2>
 
                 <p>
-                  The current database assessment contains simulated
-                  hazard, exposure, vulnerability and capacity inputs.
+                  The current database assessment contains
+                  simulated hazard, exposure, vulnerability and
+                  capacity inputs.
                 </p>
 
                 <ul>
@@ -246,8 +239,8 @@ export default function Home() {
                 </ul>
 
                 <small className="notice">
-                  Simulated risk assessment from Supabase. This is not
-                  an official disaster warning.
+                  Simulated risk assessment from Supabase. This is
+                  not an official disaster warning.
                 </small>
               </article>
 
@@ -305,7 +298,7 @@ export default function Home() {
                 </h2>
 
                 <p>
-                  Sources and assessment classification
+                  Sources and assessment classifications
                 </p>
               </div>
             </div>
@@ -330,6 +323,13 @@ export default function Home() {
                   </tr>
 
                   <tr>
+                    <td>Sabah weather warnings</td>
+                    <td>MetMalaysia API v2.1</td>
+                    <td>Official warning</td>
+                    <td>LIVE FEED</td>
+                  </tr>
+
+                  <tr>
                     <td>Ranau landslide assessment</td>
                     <td>Supabase PostgreSQL</td>
                     <td>Simulated risk data</td>
@@ -337,17 +337,66 @@ export default function Home() {
                   </tr>
 
                   <tr>
-                    <td>Map background</td>
+                    <td>Geographic background</td>
                     <td>OpenStreetMap</td>
-                    <td>Geographic base map</td>
+                    <td>Base map</td>
                     <td>LIVE</td>
                   </tr>
 
                   <tr>
-                    <td>AI explanation</td>
+                    <td>AI risk explanation</td>
                     <td>Qwen AI</td>
                     <td>Not configured</td>
                     <td>PENDING</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="panel tablePanel">
+            <div className="panelHead">
+              <div>
+                <h2>
+                  Trust &amp; Disclaimer
+                </h2>
+
+                <p>
+                  Important information for public users
+                </p>
+              </div>
+            </div>
+
+            <div className="tableWrap">
+              <table>
+                <tbody>
+                  <tr>
+                    <td>
+                      Official weather forecasts and warnings are
+                      obtained from MetMalaysia.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Risk assessments marked SIMULATED are for
+                      development and interface testing only.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      AI-assisted assessments must not be treated as
+                      official emergency warnings or evacuation
+                      instructions.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Users should always follow instructions issued
+                      by official authorities and emergency agencies.
+                    </td>
                   </tr>
                 </tbody>
               </table>
