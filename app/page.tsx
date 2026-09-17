@@ -1,3 +1,4 @@
+"use client";
 import dynamic from "next/dynamic";
 import {districts} from "@/lib/mock-data";
 const SabahMap=dynamic(()=>import("@/components/SabahMap"),{ssr:false,loading:()=> <div className="mapLoading">Loading geographic map…</div>});
