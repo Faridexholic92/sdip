@@ -1,5 +1,13 @@
-import { createHash, timingSafeEqual } from "crypto";
-import { NextRequest, NextResponse } from "next/server";
+import {
+  createHash,
+  timingSafeEqual
+} from "crypto";
+
+import {
+  NextRequest,
+  NextResponse
+} from "next/server";
+
 import { sql } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -12,33 +20,55 @@ const warningCategories = [
   "WINDSEA2",
   "CYCLONE2",
   "QUAKETSUNAMI2"
+] as const;
+
+const sabahKeywords = [
+  "sabah",
+  "sandakan",
+  "lahad datu",
+  "tawau",
+  "semporna",
+  "kinabatangan",
+  "kota kinabalu",
+  "kota belud",
+  "ranau",
+  "kudat",
+  "beaufort",
+  "papar",
+  "penampang",
+  "tuaran",
+  "putatan",
+  "keningau",
+  "sulu"
 ];
+
+type MetWarningText = {
+  warning?: string;
+  earthquake?: string;
+  tsunami?: string;
+};
 
 type MetWarning = {
   date?: string;
   datatype?: string;
+
   value?: {
     heading?: {
       ms?: string;
       en?: string;
     };
+
     text?: {
-      ms?: {
-        warning?: string;
-        earthquake?: string;
-        tsunami?: string;
-      };
-      en?: {
-        warning?: string;
-        earthquake?: string;
-        tsunami?: string;
-      };
+      ms?: MetWarningText;
+      en?: MetWarningText;
     };
   };
+
   attributes?: {
     timestamp?: string | null;
     valid_from?: string | null;
     valid_to?: string | null;
+
     title?: {
       ms?: string;
       en?: string;
@@ -50,18 +80,24 @@ type MetResponse = {
   metadata?: {
     resultset?: {
       count?: number;
+      offset?: number;
+      limit?: number;
     };
   };
+
   results?: MetWarning[];
 };
 
 function getMalaysiaDate() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kuala_Lumpur",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(new Date());
+  const parts = new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone: "Asia/Kuala_Lumpur",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }
+  ).formatToParts(new Date());
 
   const year = parts.find(
     (part) => part.type === "year"
@@ -80,82 +116,200 @@ function getMalaysiaDate() {
 
 function isAuthorized(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
-  const authorization = request.headers.get("authorization");
+
+  const authorization =
+    request.headers.get("authorization");
 
   if (!cronSecret || !authorization) {
     return false;
   }
 
-  const expected = Buffer.from(`Bearer ${cronSecret}`);
+  const expected = Buffer.from(
+    `Bearer ${cronSecret}`
+  );
+
   const received = Buffer.from(authorization);
 
   if (expected.length !== received.length) {
     return false;
   }
 
-  return timingSafeEqual(expected, received);
+  return timingSafeEqual(
+    expected,
+    received
+  );
+}
+
+function combineWarningText(
+  text?: MetWarningText
+) {
+  if (!text) {
+    return "";
+  }
+
+  return [
+    text.warning,
+    text.earthquake,
+    text.tsunami
+  ]
+    .filter(
+      (value): value is string =>
+        typeof value === "string" &&
+        value.trim().length > 0
+    )
+    .join("\n")
+    .trim();
 }
 
 function getMalayText(item: MetWarning) {
-  const text = item.value?.text?.ms;
-
-  if (!text) {
-    return "";
-  }
-
-  return [
-    text.warning,
-    text.earthquake,
-    text.tsunami
-  ]
-    .filter(Boolean)
-    .join(" ");
+  return combineWarningText(
+    item.value?.text?.ms
+  );
 }
 
 function getEnglishText(item: MetWarning) {
-  const text = item.value?.text?.en;
-
-  if (!text) {
-    return "";
-  }
-
-  return [
-    text.warning,
-    text.earthquake,
-    text.tsunami
-  ]
-    .filter(Boolean)
-    .join(" ");
+  return combineWarningText(
+    item.value?.text?.en
+  );
 }
 
-function extractSabahSection(text: string) {
+function normalizeWarningText(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n+/g, "\n")
+    .replace(/\s*•\s*/g, " • ")
+    .trim();
+}
+
+function isSabahRelevant(
+  malayText: string,
+  englishText: string
+) {
+  const combinedText = normalizeWarningText(
+    `${malayText}\n${englishText}`
+  );
+
+  return sabahKeywords.some(
+    (keyword) =>
+      combinedText.includes(keyword)
+  );
+}
+
+function extractColonSabahSection(
+  text: string
+) {
+  const normalizedText = text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
   const marker = "Sabah:";
-  const start = text.indexOf(marker);
+  const start = normalizedText.indexOf(marker);
 
   if (start === -1) {
     return null;
   }
 
-  const fromSabah = text.slice(start);
+  const fromSabah =
+    normalizedText.slice(start);
 
   const possibleEndMarkers = [
     "• W.P. Labuan",
     "• WP Labuan",
-    "• Sarawak:",
-    "• Sarawak"
+    "• Wilayah Persekutuan Labuan",
+    "\nSarawak:",
+    "\nSarawak"
   ];
 
   let end = fromSabah.length;
 
-  for (const endMarker of possibleEndMarkers) {
-    const position = fromSabah.indexOf(endMarker);
+  for (
+    const endMarker of possibleEndMarkers
+  ) {
+    const position =
+      fromSabah.indexOf(endMarker);
 
-    if (position > 0 && position < end) {
+    if (
+      position > 0 &&
+      position < end
+    ) {
       end = position;
     }
   }
 
-  return fromSabah.slice(0, end).trim();
+  return fromSabah
+    .slice(0, end)
+    .trim();
+}
+
+function extractRelevantLines(
+  text: string,
+  language: "ms" | "en"
+) {
+  if (!text) {
+    return null;
+  }
+
+  const exactSabahSection =
+    extractColonSabahSection(text);
+
+  if (exactSabahSection) {
+    return exactSabahSection;
+  }
+
+  const cleanedText = text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
+  const lines = cleanedText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const relevantLines = lines.filter(
+    (line) => {
+      const normalizedLine =
+        line.toLowerCase();
+
+      return sabahKeywords.some(
+        (keyword) =>
+          normalizedLine.includes(keyword)
+      );
+    }
+  );
+
+  if (relevantLines.length > 0) {
+    return Array.from(
+      new Set(relevantLines)
+    ).join("\n\n");
+  }
+
+  const normalizedFullText =
+    cleanedText.toLowerCase();
+
+  const isEarthquakeText =
+    normalizedFullText.includes(
+      language === "ms"
+        ? "gempa bumi"
+        : "earthquake"
+    );
+
+  if (
+    isEarthquakeText &&
+    isSabahRelevant(
+      language === "ms" ? text : "",
+      language === "en" ? text : ""
+    )
+  ) {
+    return cleanedText.trim();
+  }
+
+  return null;
 }
 
 function createFingerprint(
@@ -163,14 +317,30 @@ function createFingerprint(
   item: MetWarning,
   warningText: string
 ) {
+  const datatype =
+    item.datatype ?? category;
+
+  const validFrom =
+    item.attributes?.valid_from ?? "";
+
+  const validTo =
+    item.attributes?.valid_to ?? "";
+
+  const normalizedText =
+    normalizeWarningText(warningText);
+
+  /*
+   * Jangan masukkan item.date atau timestamp
+   * penerbitan dalam fingerprint.
+   *
+   * MetMalaysia boleh menerbitkan semula
+   * kandungan sama dengan timestamp berlainan.
+   */
   const sourceValue = [
-    category,
-    item.datatype ?? "",
-    item.date ?? "",
-    item.attributes?.timestamp ?? "",
-    item.attributes?.valid_from ?? "",
-    item.attributes?.valid_to ?? "",
-    warningText
+    datatype,
+    validFrom,
+    validTo,
+    normalizedText
   ].join("|");
 
   return createHash("sha256")
@@ -178,7 +348,29 @@ function createFingerprint(
     .digest("hex");
 }
 
-export async function GET(request: NextRequest) {
+function getAlertStatus(
+  validTo: string | null
+) {
+  if (!validTo) {
+    return "active";
+  }
+
+  const expiryTime =
+    new Date(validTo).getTime();
+
+  if (
+    Number.isFinite(expiryTime) &&
+    expiryTime < Date.now()
+  ) {
+    return "expired";
+  }
+
+  return "active";
+}
+
+export async function GET(
+  request: NextRequest
+) {
   if (!isAuthorized(request)) {
     return NextResponse.json(
       {
@@ -190,14 +382,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const baseUrl = process.env.METMALAYSIA_API_URL;
-  const metToken = process.env.METMALAYSIA_API_TOKEN;
+  const baseUrl =
+    process.env.METMALAYSIA_API_URL;
+
+  const metToken =
+    process.env.METMALAYSIA_API_TOKEN;
 
   if (!baseUrl || !metToken) {
     return NextResponse.json(
       {
         status: "not_configured",
-        message: "MetMalaysia variables are missing."
+        message:
+          "MetMalaysia variables are missing."
       },
       {
         status: 503
@@ -206,7 +402,9 @@ export async function GET(request: NextRequest) {
   }
 
   const today = getMalaysiaDate();
-  const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
+
+  const cleanBaseUrl =
+    baseUrl.replace(/\/+$/, "");
 
   let recordsReceived = 0;
   let sabahRecords = 0;
@@ -217,53 +415,90 @@ export async function GET(request: NextRequest) {
     message: string;
   }> = [];
 
-  for (const category of warningCategories) {
+  for (
+    const category of warningCategories
+  ) {
     try {
-      const apiUrl = new URL(`${cleanBaseUrl}/data`);
+      const apiUrl = new URL(
+        `${cleanBaseUrl}/data`
+      );
 
-      apiUrl.searchParams.set("datasetid", "WARNING");
+      apiUrl.searchParams.set(
+        "datasetid",
+        "WARNING"
+      );
+
       apiUrl.searchParams.set(
         "datacategoryid",
         category
       );
-      apiUrl.searchParams.set("start_date", today);
-      apiUrl.searchParams.set("end_date", today);
 
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          Authorization: `METToken ${metToken}`,
-          "User-Agent": "SDIP-Cron/0.1"
-        },
-        cache: "no-store"
-      });
+      apiUrl.searchParams.set(
+        "start_date",
+        today
+      );
+
+      apiUrl.searchParams.set(
+        "end_date",
+        today
+      );
+
+      const response = await fetch(
+        apiUrl,
+        {
+          method: "GET",
+
+          headers: {
+            Accept: "application/json",
+
+            Authorization:
+              `METToken ${metToken}`,
+
+            "User-Agent":
+              "SDIP-Cron/0.2"
+          },
+
+          cache: "no-store"
+        }
+      );
 
       if (!response.ok) {
         errors.push({
           category,
-          message: `MetMalaysia returned ${response.status}`
+          message:
+            `MetMalaysia returned ${response.status}`
         });
 
         continue;
       }
 
-      const body = (await response.json()) as MetResponse;
-      const results = body.results ?? [];
+      const body =
+        (await response.json()) as MetResponse;
+
+      const results =
+        body.results ?? [];
 
       recordsReceived += results.length;
 
       for (const item of results) {
-        const warningMs = getMalayText(item);
-        const warningEn = getEnglishText(item);
+        const warningMs =
+          getMalayText(item);
 
-        const combinedText = [
-          warningMs,
-          warningEn
-        ].join(" ");
+        const warningEn =
+          getEnglishText(item);
+
+        if (
+          !warningMs &&
+          !warningEn
+        ) {
+          continue;
+        }
 
         const affectsSabah =
-          combinedText.toLowerCase().includes("sabah");
+          isSabahRelevant(
+            warningMs,
+            warningEn
+          );
 
         if (!affectsSabah) {
           continue;
@@ -272,13 +507,23 @@ export async function GET(request: NextRequest) {
         sabahRecords += 1;
 
         const sabahSectionMs =
-          extractSabahSection(warningMs);
+          extractRelevantLines(
+            warningMs,
+            "ms"
+          );
 
-        const fingerprint = createFingerprint(
-          category,
-          item,
-          warningMs || warningEn
-        );
+        const sabahSectionEn =
+          extractRelevantLines(
+            warningEn,
+            "en"
+          );
+
+        const fingerprint =
+          createFingerprint(
+            category,
+            item,
+            warningMs || warningEn
+          );
 
         const publishedAt =
           item.date ??
@@ -286,10 +531,12 @@ export async function GET(request: NextRequest) {
           null;
 
         const validFrom =
-          item.attributes?.valid_from ?? null;
+          item.attributes?.valid_from ??
+          null;
 
         const validTo =
-          item.attributes?.valid_to ?? null;
+          item.attributes?.valid_to ??
+          null;
 
         const headingMs =
           item.value?.heading?.ms ??
@@ -300,6 +547,9 @@ export async function GET(request: NextRequest) {
           item.value?.heading?.en ??
           item.attributes?.title?.en ??
           "MetMalaysia Alert";
+
+        const alertStatus =
+          getAlertStatus(validTo);
 
         await sql`
           insert into public.official_alerts (
@@ -315,6 +565,7 @@ export async function GET(request: NextRequest) {
             valid_to,
             affects_sabah,
             sabah_section_ms,
+            sabah_section_en,
             alert_status,
             raw_payload,
             first_seen_at,
@@ -335,12 +586,8 @@ export async function GET(request: NextRequest) {
             ${validTo},
             true,
             ${sabahSectionMs},
-            ${
-              validTo &&
-              new Date(validTo).getTime() < Date.now()
-                ? "expired"
-                : "active"
-            },
+            ${sabahSectionEn},
+            ${alertStatus},
             ${sql.json(item)},
             now(),
             now(),
@@ -349,23 +596,50 @@ export async function GET(request: NextRequest) {
           )
           on conflict (fingerprint)
           do update set
-            heading_ms = excluded.heading_ms,
-            heading_en = excluded.heading_en,
-            warning_ms = excluded.warning_ms,
-            warning_en = excluded.warning_en,
-            valid_from = excluded.valid_from,
-            valid_to = excluded.valid_to,
+            source_name =
+              excluded.source_name,
+
+            datatype =
+              excluded.datatype,
+
+            heading_ms =
+              excluded.heading_ms,
+
+            heading_en =
+              excluded.heading_en,
+
+            warning_ms =
+              excluded.warning_ms,
+
+            warning_en =
+              excluded.warning_en,
+
+            published_at =
+              excluded.published_at,
+
+            valid_from =
+              excluded.valid_from,
+
+            valid_to =
+              excluded.valid_to,
+
+            affects_sabah =
+              excluded.affects_sabah,
+
             sabah_section_ms =
               excluded.sabah_section_ms,
-            raw_payload = excluded.raw_payload,
+
+            sabah_section_en =
+              excluded.sabah_section_en,
+
+            alert_status =
+              excluded.alert_status,
+
+            raw_payload =
+              excluded.raw_payload,
+
             last_seen_at = now(),
-            updated_at = now(),
-            alert_status = case
-              when excluded.valid_to is not null
-                and excluded.valid_to < now()
-              then 'expired'
-              else 'active'
-            end
+            updated_at = now()
         `;
 
         savedRecords += 1;
@@ -378,11 +652,16 @@ export async function GET(request: NextRequest) {
 
       errors.push({
         category,
-        message: "Unexpected processing error"
+        message:
+          "Unexpected processing error"
       });
     }
   }
 
+  /*
+   * Tandakan amaran yang sudah tamat
+   * berdasarkan valid_to rasmi.
+   */
   await sql`
     update public.official_alerts
     set
@@ -395,16 +674,24 @@ export async function GET(request: NextRequest) {
   `;
 
   return NextResponse.json({
-    status: errors.length === 0
-      ? "success"
-      : "partial_success",
+    status:
+      errors.length === 0
+        ? "success"
+        : "partial_success",
+
     source: "MetMalaysia",
     date: today,
-    categoriesChecked: warningCategories.length,
+
+    categoriesChecked:
+      warningCategories.length,
+
     recordsReceived,
     sabahRecords,
     savedRecords,
+
     errors,
-    completedAt: new Date().toISOString()
+
+    completedAt:
+      new Date().toISOString()
   });
 }
