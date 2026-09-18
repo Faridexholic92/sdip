@@ -14,7 +14,7 @@ const SabahMap = dynamic(
 
     loading: () => (
       <div className="mapLoading">
-        Loading geographic map…
+        Loading Esri map…
       </div>
     )
   }
@@ -66,8 +66,12 @@ const serviceHealth = [
     status: "ACTIVE"
   },
   {
-    name: "Risk API",
+    name: "District Monitoring API",
     status: "ONLINE"
+  },
+  {
+    name: "Esri Basemap",
+    status: "ACTIVE"
   },
   {
     name: "Qwen gateway",
@@ -123,8 +127,8 @@ export default function Home() {
           Systems operational
 
           <small>
-            MetMalaysia + Supabase
-            connected
+            MetMalaysia, Supabase and
+            Esri connected
           </small>
         </div>
       </aside>
@@ -137,8 +141,8 @@ export default function Home() {
             </h1>
 
             <p>
-              Real-time monitoring &amp;
-              risk intelligence
+              Official weather monitoring
+              and disaster intelligence
             </p>
           </div>
 
@@ -158,13 +162,14 @@ export default function Home() {
               <div className="panelHead">
                 <div>
                   <h2>
-                    Current Multi-Hazard Map
+                    Sabah Weather &amp;
+                    Warning Map
                   </h2>
 
                   <p>
-                    Official forecasts and
-                    warnings · simulated risk
-                    overlay
+                    Official MetMalaysia
+                    forecasts and active
+                    warnings
                   </p>
                 </div>
 
@@ -178,67 +183,6 @@ export default function Home() {
 
             <aside className="stack">
               <LiveWeatherCard />
-
-              <article className="panel intelligence">
-                <label>
-                  SIMULATED RISK INTELLIGENCE
-                </label>
-
-                <h2>
-                  Elevated landslide
-                  potential recorded for
-                  Ranau
-                </h2>
-
-                <p>
-                  The current database
-                  assessment contains
-                  simulated hazard,
-                  exposure, vulnerability
-                  and capacity inputs.
-                </p>
-
-                <ul>
-                  <li>
-                    Location
-
-                    <b>
-                      RANAU
-                    </b>
-                  </li>
-
-                  <li>
-                    Hazard
-
-                    <b>
-                      LANDSLIDE
-                    </b>
-                  </li>
-
-                  <li>
-                    Risk level
-
-                    <b>
-                      HIGH
-                    </b>
-                  </li>
-
-                  <li>
-                    Confidence
-
-                    <b>
-                      72%
-                    </b>
-                  </li>
-                </ul>
-
-                <small className="notice">
-                  Simulated risk assessment
-                  from Supabase. This is not
-                  an official disaster
-                  warning.
-                </small>
-              </article>
 
               <article className="panel health">
                 <h3>
@@ -260,6 +204,13 @@ export default function Home() {
                     </div>
                   )
                 )}
+
+                <small className="notice">
+                  Forecast ingestion runs
+                  hourly. Official warning
+                  ingestion runs every
+                  10 minutes.
+                </small>
               </article>
             </aside>
           </div>
@@ -274,8 +225,8 @@ export default function Home() {
                 </h2>
 
                 <p>
-                  Sources and assessment
-                  classifications
+                  Sources, classifications
+                  and update methods
                 </p>
               </div>
             </div>
@@ -294,6 +245,10 @@ export default function Home() {
 
                     <th>
                       Classification
+                    </th>
+
+                    <th>
+                      Update Method
                     </th>
 
                     <th>
@@ -318,7 +273,11 @@ export default function Home() {
                     </td>
 
                     <td>
-                      LIVE VIA CRON
+                      Supabase Cron hourly
+                    </td>
+
+                    <td>
+                      LIVE
                     </td>
                   </tr>
 
@@ -337,40 +296,8 @@ export default function Home() {
                     </td>
 
                     <td>
-                      LIVE VIA CRON
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Ranau landslide
-                      assessment
-                    </td>
-
-                    <td>
-                      Supabase PostgreSQL
-                    </td>
-
-                    <td>
-                      Simulated risk data
-                    </td>
-
-                    <td>
-                      SIMULATED
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Geographic background
-                    </td>
-
-                    <td>
-                      OpenStreetMap
-                    </td>
-
-                    <td>
-                      Base map
+                      Supabase Cron every
+                      10 minutes
                     </td>
 
                     <td>
@@ -380,7 +307,99 @@ export default function Home() {
 
                   <tr>
                     <td>
-                      AI risk explanation
+                      District monitoring
+                    </td>
+
+                    <td>
+                      SDIP Supabase
+                    </td>
+
+                    <td>
+                      Aggregated official
+                      forecast
+                    </td>
+
+                    <td>
+                      Generated from stored
+                      MetMalaysia records
+                    </td>
+
+                    <td>
+                      LIVE
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Satellite basemap
+                    </td>
+
+                    <td>
+                      Esri World Imagery
+                    </td>
+
+                    <td>
+                      Geographic reference
+                    </td>
+
+                    <td>
+                      Esri tile service
+                    </td>
+
+                    <td>
+                      LIVE
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Topographic basemap
+                    </td>
+
+                    <td>
+                      Esri World Topographic
+                      Map
+                    </td>
+
+                    <td>
+                      Geographic reference
+                    </td>
+
+                    <td>
+                      Esri tile service
+                    </td>
+
+                    <td>
+                      AVAILABLE
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Alternative basemap
+                    </td>
+
+                    <td>
+                      OpenStreetMap
+                    </td>
+
+                    <td>
+                      Geographic reference
+                    </td>
+
+                    <td>
+                      Public tile service
+                    </td>
+
+                    <td>
+                      AVAILABLE
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      AI-generated
+                      explanation
                     </td>
 
                     <td>
@@ -388,11 +407,124 @@ export default function Home() {
                     </td>
 
                     <td>
+                      Not operational
+                    </td>
+
+                    <td>
                       Not configured
                     </td>
 
                     <td>
-                      PENDING
+                      DISABLED
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="panel tablePanel">
+            <div className="panelHead">
+              <div>
+                <h2>
+                  Data Coverage Notes
+                </h2>
+
+                <p>
+                  Known limitations in the
+                  current official datasets
+                </p>
+              </div>
+            </div>
+
+            <div className="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>
+                      Dataset
+                    </th>
+
+                    <th>
+                      Coverage
+                    </th>
+
+                    <th>
+                      Limitation
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr>
+                    <td>
+                      District forecast
+                    </td>
+
+                    <td>
+                      30 of 32 MetMalaysia
+                      Sabah locations
+                    </td>
+
+                    <td>
+                      Paitan and Pensiangan
+                      currently return no
+                      GENERAL forecast.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Map coordinates
+                    </td>
+
+                    <td>
+                      Locations with
+                      coordinates supplied
+                      by MetMalaysia
+                    </td>
+
+                    <td>
+                      Locations with null
+                      coordinates are not
+                      assigned invented map
+                      positions.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Official warnings
+                    </td>
+
+                    <td>
+                      Warnings containing
+                      Sabah-related
+                      information
+                    </td>
+
+                    <td>
+                      Statewide warnings
+                      without exact district
+                      locations are shown
+                      using a general Sabah
+                      marker.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Disaster risk
+                    </td>
+
+                    <td>
+                      No verified dataset
+                      currently connected
+                    </td>
+
+                    <td>
+                      No fabricated risk
+                      scores are published.
                     </td>
                   </tr>
                 </tbody>
@@ -408,8 +540,8 @@ export default function Home() {
                 </h2>
 
                 <p>
-                  Important information
-                  for public users
+                  Important information for
+                  portal users
                 </p>
               </div>
             </div>
@@ -419,41 +551,57 @@ export default function Home() {
                 <tbody>
                   <tr>
                     <td>
-                      Official weather
-                      forecasts and warnings
-                      are obtained from
+                      Official forecasts and
+                      warnings displayed by
+                      SDIP originate from
                       MetMalaysia.
                     </td>
                   </tr>
 
                   <tr>
                     <td>
-                      Risk assessments
-                      marked SIMULATED are
-                      for development and
-                      interface testing
-                      only.
+                      Pulse markers represent
+                      active official warning
+                      areas identified from
+                      MetMalaysia warning
+                      text.
                     </td>
                   </tr>
 
                   <tr>
                     <td>
-                      AI-assisted
-                      assessments must not
-                      be treated as official
-                      emergency warnings or
-                      evacuation
+                      A general Sabah pulse
+                      marker does not
+                      represent an exact
+                      incident coordinate.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      SDIP does not currently
+                      publish unverified or
+                      fabricated disaster
+                      risk scores.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      This portal does not
+                      replace instructions
+                      issued by MetMalaysia,
+                      NADMA, JPBN Sabah or
+                      emergency authorities.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      Users must follow
+                      official evacuation,
+                      safety and emergency
                       instructions.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Users should always
-                      follow instructions
-                      issued by official
-                      authorities and
-                      emergency agencies.
                     </td>
                   </tr>
                 </tbody>
