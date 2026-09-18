@@ -1,89 +1,73 @@
-"use client";
-
-import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import LiveKpis from "@/components/LiveKpis";
 import PortalSidebar from "@/components/PortalSidebar";
 
-const SabahMap = dynamic(
-  () => import("@/components/SabahMap"),
-  {
-    ssr: false,
-
-    loading: () => (
-      <div className="mapLoading">
-        Loading Esri map…
-      </div>
-    )
-  }
-);
-
-const serviceHealth = [
-  {
-    name: "Application",
-    status: "ONLINE",
-    color: "#86efac"
-  },
-  {
-    name: "Supabase Database",
-    status: "CONNECTED",
-    color: "#86efac"
-  },
-  {
-    name: "MetMalaysia Forecast",
-    status: "CONNECTED",
-    color: "#86efac"
-  },
-  {
-    name: "MetMalaysia Warnings",
-    status: "CONNECTED",
-    color: "#86efac"
-  },
-  {
-    name: "Supabase Cron",
-    status: "ACTIVE",
-    color: "#86efac"
-  },
-  {
-    name: "Esri Basemap",
-    status: "ACTIVE",
-    color: "#86efac"
-  },
-  {
-    name: "Qwen AI",
-    status: "DISABLED",
-    color: "#94a3b8"
-  }
-];
-
-const quickActions = [
+const quickLinks = [
   {
     title: "Live Weather",
     description:
-      "Lihat forecast terperinci dan pilih lokasi Sabah.",
+      "Lihat forecast terperinci untuk satu lokasi pilihan.",
     href: "/weather",
-    label: "Open Weather",
-    color: "#38bdf8",
-    icon: "☁"
+    icon: "☁",
+    color: "#38bdf8"
+  },
+  {
+    title: "Disaster Map",
+    description:
+      "Buka peta Esri dengan marker forecast dan pulse amaran.",
+    href: "/map",
+    icon: "◎",
+    color: "#f59e0b"
   },
   {
     title: "Official Alerts",
     description:
-      "Semak semua amaran aktif rasmi daripada MetMalaysia.",
+      "Semak semua amaran rasmi aktif berkaitan Sabah.",
     href: "/alerts",
-    label: "Open Alerts",
-    color: "#ef4444",
-    icon: "!"
+    icon: "!",
+    color: "#ef4444"
   },
   {
-    title: "Weather Map",
+    title: "District Monitor",
     description:
-      "Lihat forecast dan amaran aktif pada peta Esri.",
-    href: "#map",
-    label: "View Map",
-    color: "#f59e0b",
-    icon: "◎"
+      "Bandingkan forecast bagi semua 32 lokasi Sabah.",
+    href: "/districts",
+    icon: "▦",
+    color: "#22c55e"
+  }
+];
+
+const systems = [
+  {
+    name: "MetMalaysia warnings",
+    detail: "Semakan setiap 10 minit",
+    status: "ACTIVE",
+    color: "#86efac"
+  },
+  {
+    name: "MetMalaysia forecasts",
+    detail: "Empat batch setiap jam",
+    status: "ACTIVE",
+    color: "#86efac"
+  },
+  {
+    name: "Supabase database",
+    detail: "Official data storage",
+    status: "CONNECTED",
+    color: "#86efac"
+  },
+  {
+    name: "Esri basemap",
+    detail: "Satellite and topographic",
+    status: "AVAILABLE",
+    color: "#86efac"
+  },
+  {
+    name: "Qwen AI",
+    detail: "Belum dikonfigurasi",
+    status: "DISABLED",
+    color: "#94a3b8"
   }
 ];
 
@@ -100,8 +84,8 @@ export default function Home() {
             </h1>
 
             <p>
-              Ringkasan data cuaca dan
-              amaran rasmi semasa
+              Ringkasan sistem dan data
+              rasmi semasa
             </p>
           </div>
 
@@ -122,20 +106,17 @@ export default function Home() {
               color: "#fecaca",
               fontSize: "12px",
               fontWeight: 700,
-              textDecoration: "none",
-              whiteSpace: "nowrap"
+              textDecoration: "none"
             }}
           >
             <span
-              aria-hidden="true"
               style={{
-                display: "inline-block",
                 width: "8px",
                 height: "8px",
                 borderRadius: "50%",
                 background: "#ef4444",
                 boxShadow:
-                  "0 0 0 4px rgba(239,68,68,0.14)"
+                  "0 0 0 4px rgba(239,68,68,0.15)"
               }}
             />
 
@@ -147,372 +128,214 @@ export default function Home() {
           <section
             className="panel"
             style={{
-              display: "flex",
-              minHeight: "58px",
-              padding: "12px 16px",
-              gap: "14px",
-              alignItems: "center",
-              justifyContent:
-                "space-between",
+              padding: "16px",
               borderColor:
                 "rgba(94,159,232,0.25)",
               background:
-                "linear-gradient(90deg, rgba(94,159,232,0.1), rgba(11,25,42,0.95))"
+                "linear-gradient(90deg, rgba(94,159,232,0.1), rgba(11,25,42,0.96))"
             }}
           >
-            <div>
-              <small
-                style={{
-                  color: "#5e9fe8",
-                  fontWeight: 800,
-                  letterSpacing:
-                    "0.08em"
-                }}
-              >
-                OFFICIAL DATA
-              </small>
-
-              <p
-                style={{
-                  margin: "5px 0 0",
-                  color: "#dbe7f5",
-                  fontSize: "13px"
-                }}
-              >
-                Data forecast dan amaran
-                dalam portal ini berasal
-                daripada MetMalaysia.
-              </p>
-            </div>
-
             <small
               style={{
-                color: "#9fb0c5",
-                textAlign: "right",
-                lineHeight: 1.5
+                color: "#5e9fe8",
+                fontWeight: 800,
+                letterSpacing: "0.08em"
               }}
             >
-              Warnings: setiap 10 minit
-              <br />
-              Forecasts: setiap jam
+              OFFICIAL DATA OVERVIEW
             </small>
+
+            <h2
+              style={{
+                margin: "7px 0 4px",
+                fontSize: "17px"
+              }}
+            >
+              Sabah Disaster Intelligence
+              Portal
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                maxWidth: "760px",
+                color: "#9fb0c5",
+                fontSize: "12px",
+                lineHeight: 1.6
+              }}
+            >
+              Dashboard ini hanya
+              menunjukkan ringkasan. Gunakan
+              halaman khusus untuk melihat
+              forecast, peta, amaran dan
+              perbandingan lokasi.
+            </p>
           </section>
 
           <LiveKpis />
 
-          <div
-            id="map"
-            className="primary"
-          >
-            <section className="panel mapPanel">
-              <div className="panelHead">
-                <div>
-                  <h2>
-                    Sabah Weather &amp;
-                    Warning Map
-                  </h2>
-
-                  <p>
-                    Forecast rasmi dan
-                    amaran aktif pada peta
-                    Esri
-                  </p>
-                </div>
-
-                <span
-                  style={{
-                    display:
-                      "inline-flex",
-                    gap: "6px",
-                    alignItems:
-                      "center",
-                    color: "#9fb0c5",
-                    fontSize: "10px",
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  <i
-                    style={{
-                      display:
-                        "inline-block",
-                      width: "7px",
-                      height: "7px",
-                      borderRadius:
-                        "50%",
-                      background:
-                        "#22c55e"
-                    }}
-                  />
-
-                  LIVE DATA
-                </span>
-              </div>
-
-              <SabahMap />
-            </section>
-
-            <aside className="stack">
-              <article
-                className="panel"
-                style={{
-                  padding: "16px"
-                }}
-              >
-                <small
-                  style={{
-                    display: "block",
-                    color: "#5e9fe8",
-                    fontWeight: 800,
-                    letterSpacing:
-                      "0.08em"
-                  }}
-                >
-                  QUICK ACCESS
-                </small>
-
-                <h2
-                  style={{
-                    margin:
-                      "8px 0 4px",
-                    fontSize: "16px"
-                  }}
-                >
-                  Portal functions
-                </h2>
-
-                <p
-                  style={{
-                    margin:
-                      "0 0 14px",
-                    color: "#9fb0c5",
-                    fontSize: "12px",
-                    lineHeight: 1.5
-                  }}
-                >
-                  Buka halaman khusus untuk
-                  maklumat terperinci.
-                </p>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gap: "10px"
-                  }}
-                >
-                  {quickActions.map(
-                    (action) => (
-                      <Link
-                        key={action.title}
-                        href={action.href}
-                        style={{
-                          display:
-                            "grid",
-                          gridTemplateColumns:
-                            "38px minmax(0, 1fr)",
-                          gap: "10px",
-                          padding: "11px",
-                          alignItems:
-                            "center",
-                          border:
-                            `1px solid ${action.color}33`,
-                          borderRadius:
-                            "8px",
-                          background:
-                            `${action.color}0d`,
-                          color:
-                            "#f4f7fb",
-                          textDecoration:
-                            "none"
-                        }}
-                      >
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            display:
-                              "grid",
-                            width: "38px",
-                            height: "38px",
-                            placeItems:
-                              "center",
-                            borderRadius:
-                              "8px",
-                            background:
-                              `${action.color}1f`,
-                            color:
-                              action.color,
-                            fontSize:
-                              "18px",
-                            fontWeight:
-                              800
-                          }}
-                        >
-                          {action.icon}
-                        </span>
-
-                        <span>
-                          <b
-                            style={{
-                              display:
-                                "block",
-                              fontSize:
-                                "12px"
-                            }}
-                          >
-                            {action.title}
-                          </b>
-
-                          <small
-                            style={{
-                              display:
-                                "block",
-                              marginTop:
-                                "3px",
-                              color:
-                                "#9fb0c5",
-                              fontSize:
-                                "10px",
-                              lineHeight:
-                                1.4
-                            }}
-                          >
-                            {
-                              action.description
-                            }
-                          </small>
-
-                          <small
-                            style={{
-                              display:
-                                "block",
-                              marginTop:
-                                "5px",
-                              color:
-                                action.color,
-                              fontSize:
-                                "9px",
-                              fontWeight:
-                                800
-                            }}
-                          >
-                            {action.label} →
-                          </small>
-                        </span>
-                      </Link>
-                    )
-                  )}
-                </div>
-              </article>
-
-              <article className="panel health">
-                <h3>
-                  Data &amp; system health
-                </h3>
-
-                {serviceHealth.map(
-                  (service) => (
-                    <div
-                      key={service.name}
-                    >
-                      <span>
-                        {service.name}
-                      </span>
-
-                      <b
-                        style={{
-                          color:
-                            service.color
-                        }}
-                      >
-                        {service.status}
-                      </b>
-                    </div>
-                  )
-                )}
-
-                <small
-                  className="notice"
-                  style={{
-                    marginTop: "12px"
-                  }}
-                >
-                  Status ini ialah ringkasan
-                  konfigurasi portal. Data
-                  timestamp dipaparkan pada
-                  halaman terperinci.
-                </small>
-              </article>
-            </aside>
-          </div>
-
           <section
-            id="sources"
-            className="panel"
             style={{
-              marginTop: "14px",
-              padding: "16px"
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "12px"
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                gap: "16px",
-                alignItems:
-                  "flex-start",
-                justifyContent:
-                  "space-between",
-                flexWrap: "wrap"
-              }}
-            >
-              <div
+            {quickLinks.map((item) => (
+              <Link
+                key={item.title}
+                href={item.href}
+                className="panel"
                 style={{
-                  maxWidth: "700px"
+                  display: "block",
+                  padding: "17px",
+                  borderColor:
+                    `${item.color}33`,
+                  color: "#f4f7fb",
+                  textDecoration: "none"
                 }}
               >
-                <small
+                <span
                   style={{
-                    display: "block",
-                    color: "#5e9fe8",
-                    fontWeight: 800,
-                    letterSpacing:
-                      "0.08em"
+                    display: "grid",
+                    width: "42px",
+                    height: "42px",
+                    placeItems: "center",
+                    borderRadius: "9px",
+                    background:
+                      `${item.color}18`,
+                    color: item.color,
+                    fontSize: "20px",
+                    fontWeight: 800
                   }}
                 >
-                  DATA TRANSPARENCY
-                </small>
+                  {item.icon}
+                </span>
 
                 <h2
                   style={{
-                    margin:
-                      "8px 0 5px",
+                    margin: "13px 0 5px",
                     fontSize: "15px"
                   }}
                 >
-                  Official sources only
+                  {item.title}
                 </h2>
 
                 <p
                   style={{
+                    minHeight: "38px",
                     margin: 0,
                     color: "#9fb0c5",
-                    fontSize: "12px",
-                    lineHeight: 1.6
+                    fontSize: "11px",
+                    lineHeight: 1.55
                   }}
                 >
-                  Forecasts and warnings
-                  originate from
-                  MetMalaysia. Map tiles
-                  are provided by Esri and
-                  OpenStreetMap. SDIP does
-                  not currently publish
-                  fabricated disaster-risk
-                  scores.
+                  {item.description}
                 </p>
-              </div>
+
+                <small
+                  style={{
+                    display: "block",
+                    marginTop: "12px",
+                    color: item.color,
+                    fontWeight: 800
+                  }}
+                >
+                  Open →
+                </small>
+              </Link>
+            ))}
+          </section>
+
+          <section
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "14px",
+              marginTop: "14px"
+            }}
+          >
+            <article className="panel health">
+              <h3>
+                Data pipeline status
+              </h3>
+
+              {systems.map((system) => (
+                <div key={system.name}>
+                  <span>
+                    {system.name}
+
+                    <small
+                      style={{
+                        display: "block",
+                        marginTop: "3px",
+                        color: "#71849b"
+                      }}
+                    >
+                      {system.detail}
+                    </small>
+                  </span>
+
+                  <b
+                    style={{
+                      color: system.color
+                    }}
+                  >
+                    {system.status}
+                  </b>
+                </div>
+              ))}
+            </article>
+
+            <article
+              id="sources"
+              className="panel"
+              style={{
+                padding: "17px"
+              }}
+            >
+              <small
+                style={{
+                  color: "#5e9fe8",
+                  fontWeight: 800,
+                  letterSpacing: "0.08em"
+                }}
+              >
+                DATA SOURCES
+              </small>
+
+              <h2
+                style={{
+                  margin: "8px 0 5px",
+                  fontSize: "16px"
+                }}
+              >
+                Official and attributable
+                sources
+              </h2>
+
+              <p
+                style={{
+                  margin: 0,
+                  color: "#9fb0c5",
+                  fontSize: "12px",
+                  lineHeight: 1.6
+                }}
+              >
+                Forecasts and warnings
+                originate from MetMalaysia.
+                Geographic basemaps are
+                provided by Esri and
+                OpenStreetMap.
+              </p>
 
               <div
                 style={{
                   display: "flex",
                   gap: "8px",
+                  marginTop: "14px",
                   flexWrap: "wrap"
                 }}
               >
@@ -525,18 +348,14 @@ export default function Home() {
                   <span
                     key={source}
                     style={{
-                      padding:
-                        "6px 9px",
+                      padding: "6px 9px",
                       border:
                         "1px solid rgba(134,239,172,0.2)",
-                      borderRadius:
-                        "999px",
+                      borderRadius: "999px",
                       background:
                         "rgba(34,197,94,0.07)",
-                      color:
-                        "#86efac",
-                      fontSize:
-                        "9px",
+                      color: "#86efac",
+                      fontSize: "9px",
                       fontWeight: 800
                     }}
                   >
@@ -544,45 +363,19 @@ export default function Home() {
                   </span>
                 ))}
               </div>
-            </div>
-          </section>
 
-          <section
-            className="panel"
-            style={{
-              marginTop: "14px",
-              padding: "14px 16px",
-              borderColor:
-                "rgba(234,194,107,0.2)",
-              background:
-                "rgba(234,194,107,0.04)"
-            }}
-          >
-            <small
-              style={{
-                color: "#eac26b",
-                fontWeight: 800
-              }}
-            >
-              IMPORTANT
-            </small>
-
-            <p
-              style={{
-                margin: "6px 0 0",
-                color: "#9fb0c5",
-                fontSize: "11px",
-                lineHeight: 1.6
-              }}
-            >
-              SDIP is an information
-              portal and does not replace
-              official emergency
-              instructions. Always follow
-              MetMalaysia, NADMA, JPBN
-              Sabah and emergency
-              authorities.
-            </p>
+              <small
+                className="notice"
+                style={{
+                  marginTop: "16px"
+                }}
+              >
+                SDIP tidak menerbitkan skor
+                risiko rekaan dan tidak
+                menggantikan arahan rasmi
+                agensi kecemasan.
+              </small>
+            </article>
           </section>
         </div>
       </section>
@@ -599,17 +392,17 @@ export default function Home() {
           Weather
         </Link>
 
+        <Link href="/map">
+          Map
+        </Link>
+
         <Link href="/alerts">
           Alerts
         </Link>
 
-        <a href="#map">
-          Map
-        </a>
-
-        <a href="#sources">
-          Sources
-        </a>
+        <Link href="/districts">
+          Districts
+        </Link>
       </nav>
     </main>
   );
