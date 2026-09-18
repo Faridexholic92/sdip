@@ -13,8 +13,6 @@ type OverviewResponse = {
 
   overview: {
     activeAlerts: number;
-    simulatedNotices: number;
-    elevatedAreas: number;
 
     forecastCoverage: {
       availableLocations: number;
@@ -57,7 +55,9 @@ function formatMalaysiaTime(
   );
 }
 
-function formatCount(count: number) {
+function formatCount(
+  count: number
+) {
   return count
     .toString()
     .padStart(2, "0");
@@ -65,7 +65,9 @@ function formatCount(count: number) {
 
 export default function LiveKpis() {
   const [data, setData] =
-    useState<OverviewResponse | null>(null);
+    useState<OverviewResponse | null>(
+      null
+    );
 
   const [loading, setLoading] =
     useState(true);
@@ -111,7 +113,7 @@ export default function LiveKpis() {
         );
 
         setError(
-          "Live KPI data is unavailable."
+          "Data ringkasan tidak dapat dimuatkan."
         );
       } finally {
         setLoading(false);
@@ -144,13 +146,15 @@ export default function LiveKpis() {
         }).map((_, index) => (
           <article key={index}>
             <small>
-              Loading
+              Memuatkan
             </small>
 
-            <strong>—</strong>
+            <strong>
+              —
+            </strong>
 
             <span>
-              Reading live data…
+              Membaca data rasmi…
             </span>
           </article>
         ))}
@@ -163,7 +167,7 @@ export default function LiveKpis() {
       <div className="kpis">
         <article>
           <small>
-            Data status
+            Status data
           </small>
 
           <strong className="red">
@@ -178,77 +182,109 @@ export default function LiveKpis() {
     );
   }
 
-  const overview = data.overview;
+  const overview =
+    data.overview;
+
   const coverage =
     overview.forecastCoverage;
 
+  const unavailableLocations =
+    Math.max(
+      0,
+      coverage.totalLocations -
+        coverage.availableLocations
+    );
+
   const kpis: KpiItem[] = [
     {
-      label: "Official alerts",
+      label:
+        "Amaran rasmi aktif",
+
       value: formatCount(
         overview.activeAlerts
       ),
+
       description:
         overview.activeAlerts > 0
-          ? "Active MetMalaysia alerts"
-          : "No active official alerts",
+          ? "Amaran MetMalaysia aktif"
+          : "Tiada amaran aktif",
+
       color:
         overview.activeAlerts > 0
           ? "red"
           : ""
     },
     {
-      label: "Simulated notices",
-      value: formatCount(
-        overview.simulatedNotices
-      ),
-      description:
-        "Development risk records",
-      color:
-        overview.simulatedNotices > 0
-          ? "orange"
-          : ""
-    },
-    {
-      label: "Elevated areas",
-      value: formatCount(
-        overview.elevatedAreas
-      ),
-      description:
-        "High-risk database areas",
-      color:
-        overview.elevatedAreas > 0
-          ? "red"
-          : ""
-    },
-    {
-      label: "Forecast locations",
+      label:
+        "Lokasi ramalan",
+
       value:
         `${coverage.availableLocations}/${coverage.totalLocations}`,
+
       description:
-        `${coverage.forecastRecords} official records`,
+        "Lokasi MetMalaysia Sabah",
+
       color: ""
     },
     {
-      label: "Forecast coverage",
+      label:
+        "Rekod ramalan",
+
+      value: String(
+        coverage.forecastRecords
+      ),
+
+      description:
+        "Rekod rasmi hari ini",
+
+      color: ""
+    },
+    {
+      label:
+        "Liputan ramalan",
+
       value:
         `${coverage.percentage}%`,
+
       description:
         coverage.percentage === 100
-          ? "Complete location coverage"
-          : "Current daily coverage",
+          ? "Liputan lengkap"
+          : "Liputan rasmi semasa",
+
       color:
         coverage.percentage < 80
           ? "orange"
           : ""
     },
     {
-      label: "Last data update",
+      label:
+        "Tiada ramalan",
+
+      value: formatCount(
+        unavailableLocations
+      ),
+
+      description:
+        unavailableLocations > 0
+          ? "Lokasi tanpa data semasa"
+          : "Semua lokasi tersedia",
+
+      color:
+        unavailableLocations > 0
+          ? "orange"
+          : ""
+    },
+    {
+      label:
+        "Kemas kini terakhir",
+
       value: "LIVE",
+
       description:
         formatMalaysiaTime(
           overview.lastDataUpdate
         ),
+
       color: ""
     }
   ];
