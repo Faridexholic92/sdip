@@ -516,8 +516,7 @@ export async function GET(
       }
 
       const body =
-        (await response.json())
-        as MetResponse;
+        (await response.json()) as MetResponse;
 
       const results =
         body.results ?? [];
@@ -628,11 +627,20 @@ export async function GET(
           values (
             ${fingerprint},
             'MetMalaysia',
-            ${item.datatype ?? category},
+            ${
+              item.datatype ??
+              category
+            },
             ${headingMs},
             ${headingEn},
-            ${warningMs || null},
-            ${warningEn || null},
+            ${
+              warningMs ||
+              null
+            },
+            ${
+              warningEn ||
+              null
+            },
             ${publishedAt},
             ${validFrom},
             ${validTo},
@@ -691,6 +699,7 @@ export async function GET(
               excluded.raw_payload,
 
             last_seen_at = now(),
+
             updated_at = now()
         `;
 
@@ -723,10 +732,12 @@ export async function GET(
 
   const completedAt = new Date();
 
-  const runStatus =
-    errors.length === 0
-      ? "success"
-      : "partial_success";
+  const runStatus:
+    | "success"
+    | "partial_success" =
+      errors.length === 0
+        ? "success"
+        : "partial_success";
 
   try {
     await recordIngestionRun({
@@ -758,7 +769,9 @@ export async function GET(
           warningCategories.length,
 
         categories:
-          warningCategories,
+          Array.from(
+            warningCategories
+          ),
 
         errors
       }
@@ -772,9 +785,7 @@ export async function GET(
 
   return NextResponse.json({
     status: runStatus,
-
     source: "MetMalaysia",
-
     date: today,
 
     categoriesChecked:
@@ -783,7 +794,6 @@ export async function GET(
     recordsReceived,
     sabahRecords,
     savedRecords,
-
     errors,
 
     completedAt:
