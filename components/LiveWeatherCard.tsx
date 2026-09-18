@@ -1,20 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState
+} from "react";
+
+import {
+  DEFAULT_SABAH_MET_LOCATION,
+  SABAH_MET_LOCATIONS
+} from "@/lib/metMalaysiaLocations";
 
 type MetResult = {
   locationid: string;
   locationname: string;
+  locationrootid: string;
   locationrootname: string;
   date: string;
   datatype: string;
   value: string | number;
   latitude: number | null;
   longitude: number | null;
-  attributes: {
+
+  attributes?: {
     unit?: string;
     code?: string;
     when?: string;
+    ref?: string | null;
     valid_from?: string | null;
     valid_to?: string | null;
   };
@@ -23,131 +35,372 @@ type MetResult = {
 type WeatherResponse = {
   status: string;
   source: string;
+  requestType: string;
   retrievedAt: string;
+
   data: {
+    metadata?: {
+      resultset?: {
+        count?: number;
+      };
+    };
+
     results: MetResult[];
   };
 };
 
+function formatMalaysiaDate(
+  timestamp: string
+) {
+  return new Date(timestamp).toLocaleDateString(
+    "ms-MY",
+    {
+      timeZone: "Asia/Kuala_Lumpur",
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    }
+  );
+}
+
+function formatMalaysiaDateTime(
+  timestamp: string
+) {
+  return new Date(timestamp).toLocaleString(
+    "ms-MY",
+    {
+      timeZone: "Asia/Kuala_Lumpur",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }
+  );
+}
+
 export default function LiveWeatherCard() {
-  const [weather, setWeather] = useState<WeatherResponse | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [
+    selectedLocationId,
+    setSelectedLocationId
+  ] = useState(
+    DEFAULT_SABAH_MET_LOCATION.id
+  );
+
+  const [weather, setWeather] =
+    useState<WeatherResponse | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  const selectedLocation = useMemo(
+    () =>
+      SABAH_MET_LOCATIONS.find(
+        (location) =>
+          location.id === selectedLocationId
+      ) ?? DEFAULT_SABAH_MET_LOCATION,
+    [selectedLocationId]
+  );
 
   useEffect(() => {
+    const controller =
+      new AbortController();
+
     async function loadWeather() {
       try {
+        setLoading(true);
+        setError("");
+
+        const params =
+          new URLSearchParams({
+            type: "forecast",
+            locationid:
+              selectedLocationId,
+            lang: "ms"
+          });
+
         const response = await fetch(
-          "/api/weather?type=forecast&locationid=LOCATION%3A251&lang=ms",
+          `/api/weather?${params.toString()}`,
           {
-            cache: "no-store"
+            cache: "no-store",
+            signal: controller.signal
           }
         );
 
         if (!response.ok) {
-          throw new Error("MetMalaysia request failed");
+          throw new Error(
+            "MetMalaysia request failed"
+          );
         }
 
-        const result: WeatherResponse = await response.json();
+        const result =
+          (await response.json()) as WeatherResponse;
 
-        if (result.status !== "success") {
-          throw new Error("MetMalaysia returned an error");
+        if (
+          result.status !== "success"
+        ) {
+          throw new Error(
+            "MetMalaysia returned an error"
+          );
         }
 
         setWeather(result);
-      } catch {
-        setError("Ramalan MetMalaysia tidak dapat dimuatkan.");
+      } catch (requestError) {
+        if (
+          requestError instanceof DOMException &&
+          requestError.name ===
+            "AbortError"
+        ) {
+          return;
+        }
+
+        console.error(
+          "Weather forecast error:",
+          requestError
+        );
+
+        setWeather(null);
+
+        setError(
+          "Ramalan rasmi tidak dapat dimuatkan."
+        );
       } finally {
-        setLoading(false);
+        if (
+          !controller.signal.aborted
+        ) {
+          setLoading(false);
+        }
       }
     }
 
     loadWeather();
-  }, []);
 
-  if (loading) {
-    return (
-      <article className="panel intelligence">
-        <label>LIVE WEATHER · METMALAYSIA</label>
-        <h2>Memuatkan ramalan Ranau…</h2>
-      </article>
-    );
+    return () => {
+      controller.abort();
+    };
+  }, [selectedLocationId]);
+
+  const results =
+    weather?.data?.results ?? [];
+
+  function getValue(datatype: string) {
+    return results.find(
+      (item) =>
+        item.datatype === datatype
+    )?.value;
   }
 
-  if (error || !weather) {
-    return (
-      <article className="panel intelligence">
-        <label>LIVE WEATHER · METMALAYSIA</label>
-        <h2>Data tidak tersedia</h2>
-        <p>{error}</p>
-      </article>
+  const morning =
+    getValue("FGM");
+
+  const afternoon =
+    getValue("FGA");
+
+  const night =
+    getValue("FGN");
+
+  const minimumTemperature =
+    getValue("FMINT");
+
+  const maximumTemperature =
+    getValue("FMAXT");
+
+  const significantWeather =
+    results.find(
+      (item) =>
+        item.datatype === "FSIGW"
     );
-  }
 
-  const results = weather.data.results;
+  const forecastDate =
+    results[0]?.date
+      ? formatMalaysiaDate(
+          results[0].date
+        )
+      : "—";
 
-  const getValue = (datatype: string) =>
-    results.find((item) => item.datatype === datatype)?.value ?? "—";
-
-  const significantWeather = results.find(
-    (item) => item.datatype === "FSIGW"
-  );
-
-  const forecastDate = results[0]?.date
-    ? new Date(results[0].date).toLocaleDateString("ms-MY", {
-        timeZone: "Asia/Kuala_Lumpur",
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-      })
-    : "—";
-
-  const updatedTime = new Date(weather.retrievedAt).toLocaleString("ms-MY", {
-    timeZone: "Asia/Kuala_Lumpur",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  const updatedTime =
+    weather?.retrievedAt
+      ? formatMalaysiaDateTime(
+          weather.retrievedAt
+        )
+      : "—";
 
   return (
     <article className="panel intelligence">
-      <label>RAMALAN RASMI · METMALAYSIA</label>
+      <label>
+        RAMALAN RASMI · METMALAYSIA
+      </label>
 
-      <h2>Cuaca Ranau</h2>
+      <div
+        style={{
+          marginTop: "10px",
+          marginBottom: "14px"
+        }}
+      >
+        <span
+          style={{
+            display: "block",
+            fontSize: "0.75rem",
+            marginBottom: "5px",
+            opacity: 0.75
+          }}
+        >
+          Pilih lokasi Sabah
+        </span>
 
-      <p>
-        {String(getValue("FSIGW"))}
-      </p>
+        <select
+          aria-label="Pilih lokasi cuaca Sabah"
+          value={selectedLocationId}
+          onChange={(event) => {
+            setSelectedLocationId(
+              event.target.value
+            );
+          }}
+          style={{
+            width: "100%",
+            borderRadius: "8px",
+            border:
+              "1px solid rgba(148,163,184,0.3)",
+            padding: "9px 10px",
+            background: "#0f172a",
+            color: "#f8fafc",
+            font: "inherit",
+            cursor: "pointer"
+          }}
+        >
+          {SABAH_MET_LOCATIONS.map(
+            (location) => (
+              <option
+                key={location.id}
+                value={location.id}
+              >
+                {location.name}
+              </option>
+            )
+          )}
+        </select>
+      </div>
 
-      <ul>
-        <li>
-          Pagi <b>{String(getValue("FGM"))}</b>
-        </li>
+      {loading && (
+        <>
+          <h2>
+            Memuatkan cuaca{" "}
+            {selectedLocation.name}…
+          </h2>
 
-        <li>
-          Petang <b>{String(getValue("FGA"))}</b>
-        </li>
+          <p>
+            Mendapatkan ramalan rasmi
+            daripada MetMalaysia.
+          </p>
+        </>
+      )}
 
-        <li>
-          Malam <b>{String(getValue("FGN"))}</b>
-        </li>
+      {!loading && error && (
+        <>
+          <h2>
+            Data tidak tersedia
+          </h2>
 
-        <li>
-          Suhu <b>{String(getValue("FMINT"))}°C–{String(getValue("FMAXT"))}°C</b>
-        </li>
-      </ul>
+          <p>{error}</p>
 
-      <small className="notice">
-        Tarikh ramalan: {forecastDate}
-        <br />
-        Dikemas kini: {updatedTime} MYT
-        <br />
-        Sumber: MetMalaysia
-        {significantWeather?.attributes?.when
-          ? ` · ${significantWeather.attributes.when}`
-          : ""}
-      </small>
+          <small className="notice">
+            Lokasi:{" "}
+            {selectedLocation.name}
+            {" · ID: "}
+            {selectedLocation.id}
+          </small>
+        </>
+      )}
+
+      {!loading &&
+        !error &&
+        weather && (
+          <>
+            <h2>
+              Cuaca{" "}
+              {results[0]?.locationname ??
+                selectedLocation.name}
+            </h2>
+
+            <p>
+              {significantWeather
+                ? String(
+                    significantWeather.value
+                  )
+                : "Tiada cuaca signifikan dinyatakan."}
+            </p>
+
+            <ul>
+              <li>
+                Pagi
+                <b>
+                  {morning !== undefined
+                    ? String(morning)
+                    : "—"}
+                </b>
+              </li>
+
+              <li>
+                Petang
+                <b>
+                  {afternoon !== undefined
+                    ? String(afternoon)
+                    : "—"}
+                </b>
+              </li>
+
+              <li>
+                Malam
+                <b>
+                  {night !== undefined
+                    ? String(night)
+                    : "—"}
+                </b>
+              </li>
+
+              <li>
+                Suhu
+                <b>
+                  {minimumTemperature !==
+                  undefined
+                    ? String(
+                        minimumTemperature
+                      )
+                    : "—"}
+                  °C–{maximumTemperature !==
+                  undefined
+                    ? String(
+                        maximumTemperature
+                      )
+                    : "—"}
+                  °C
+                </b>
+              </li>
+            </ul>
+
+            <small className="notice">
+              Tarikh ramalan:{" "}
+              {forecastDate}
+              <br />
+
+              Dikemas kini:{" "}
+              {updatedTime} MYT
+              <br />
+
+              Sumber: MetMalaysia
+              {" · "}
+              {selectedLocation.id}
+
+              {significantWeather
+                ?.attributes?.when
+                ? ` · ${significantWeather.attributes.when}`
+                : ""}
+            </small>
+          </>
+        )}
     </article>
   );
 }
