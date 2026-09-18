@@ -10,6 +10,10 @@ import {
 
 import { sql } from "@/lib/db";
 
+import {
+  recordIngestionRun
+} from "@/lib/recordIngestionRun";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -114,11 +118,16 @@ function getMalaysiaDate() {
   return `${year}-${month}-${day}`;
 }
 
-function isAuthorized(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
+function isAuthorized(
+  request: NextRequest
+) {
+  const cronSecret =
+    process.env.CRON_SECRET;
 
   const authorization =
-    request.headers.get("authorization");
+    request.headers.get(
+      "authorization"
+    );
 
   if (!cronSecret || !authorization) {
     return false;
@@ -128,9 +137,12 @@ function isAuthorized(request: NextRequest) {
     `Bearer ${cronSecret}`
   );
 
-  const received = Buffer.from(authorization);
+  const received =
+    Buffer.from(authorization);
 
-  if (expected.length !== received.length) {
+  if (
+    expected.length !== received.length
+  ) {
     return false;
   }
 
@@ -161,27 +173,39 @@ function combineWarningText(
     .trim();
 }
 
-function getMalayText(item: MetWarning) {
+function getMalayText(
+  item: MetWarning
+) {
   return combineWarningText(
     item.value?.text?.ms
   );
 }
 
-function getEnglishText(item: MetWarning) {
+function getEnglishText(
+  item: MetWarning
+) {
   return combineWarningText(
     item.value?.text?.en
   );
 }
 
-function normalizeWarningText(text: string) {
+function normalizeWarningText(
+  text: string
+) {
   return text
     .toLowerCase()
-    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(
+      /<br\s*\/?>/gi,
+      "\n"
+    )
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .replace(/[ \t]+/g, " ")
     .replace(/\n+/g, "\n")
-    .replace(/\s*•\s*/g, " • ")
+    .replace(
+      /\s*•\s*/g,
+      " • "
+    )
     .trim();
 }
 
@@ -189,9 +213,10 @@ function isSabahRelevant(
   malayText: string,
   englishText: string
 ) {
-  const combinedText = normalizeWarningText(
-    `${malayText}\n${englishText}`
-  );
+  const combinedText =
+    normalizeWarningText(
+      `${malayText}\n${englishText}`
+    );
 
   return sabahKeywords.some(
     (keyword) =>
@@ -203,12 +228,17 @@ function extractColonSabahSection(
   text: string
 ) {
   const normalizedText = text
-    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(
+      /<br\s*\/?>/gi,
+      "\n"
+    )
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n");
 
   const marker = "Sabah:";
-  const start = normalizedText.indexOf(marker);
+
+  const start =
+    normalizedText.indexOf(marker);
 
   if (start === -1) {
     return null;
@@ -228,10 +258,13 @@ function extractColonSabahSection(
   let end = fromSabah.length;
 
   for (
-    const endMarker of possibleEndMarkers
+    const endMarker
+    of possibleEndMarkers
   ) {
     const position =
-      fromSabah.indexOf(endMarker);
+      fromSabah.indexOf(
+        endMarker
+      );
 
     if (
       position > 0 &&
@@ -262,7 +295,10 @@ function extractRelevantLines(
   }
 
   const cleanedText = text
-    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(
+      /<br\s*\/?>/gi,
+      "\n"
+    )
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n");
 
@@ -271,19 +307,22 @@ function extractRelevantLines(
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const relevantLines = lines.filter(
-    (line) => {
+  const relevantLines =
+    lines.filter((line) => {
       const normalizedLine =
         line.toLowerCase();
 
       return sabahKeywords.some(
         (keyword) =>
-          normalizedLine.includes(keyword)
+          normalizedLine.includes(
+            keyword
+          )
       );
-    }
-  );
+    });
 
-  if (relevantLines.length > 0) {
+  if (
+    relevantLines.length > 0
+  ) {
     return Array.from(
       new Set(relevantLines)
     ).join("\n\n");
@@ -302,8 +341,12 @@ function extractRelevantLines(
   if (
     isEarthquakeText &&
     isSabahRelevant(
-      language === "ms" ? text : "",
-      language === "en" ? text : ""
+      language === "ms"
+        ? text
+        : "",
+      language === "en"
+        ? text
+        : ""
     )
   ) {
     return cleanedText.trim();
@@ -321,21 +364,18 @@ function createFingerprint(
     item.datatype ?? category;
 
   const validFrom =
-    item.attributes?.valid_from ?? "";
+    item.attributes?.valid_from ??
+    "";
 
   const validTo =
-    item.attributes?.valid_to ?? "";
+    item.attributes?.valid_to ??
+    "";
 
   const normalizedText =
-    normalizeWarningText(warningText);
+    normalizeWarningText(
+      warningText
+    );
 
-  /*
-   * Jangan masukkan item.date atau timestamp
-   * penerbitan dalam fingerprint.
-   *
-   * MetMalaysia boleh menerbitkan semula
-   * kandungan sama dengan timestamp berlainan.
-   */
   const sourceValue = [
     datatype,
     validFrom,
@@ -401,6 +441,7 @@ export async function GET(
     );
   }
 
+  const startedAt = new Date();
   const today = getMalaysiaDate();
 
   const cleanBaseUrl =
@@ -416,7 +457,8 @@ export async function GET(
   }> = [];
 
   for (
-    const category of warningCategories
+    const category
+    of warningCategories
   ) {
     try {
       const apiUrl = new URL(
@@ -449,13 +491,14 @@ export async function GET(
           method: "GET",
 
           headers: {
-            Accept: "application/json",
+            Accept:
+              "application/json",
 
             Authorization:
               `METToken ${metToken}`,
 
             "User-Agent":
-              "SDIP-Cron/0.2"
+              "SDIP-Cron/0.3"
           },
 
           cache: "no-store"
@@ -473,12 +516,14 @@ export async function GET(
       }
 
       const body =
-        (await response.json()) as MetResponse;
+        (await response.json())
+        as MetResponse;
 
       const results =
         body.results ?? [];
 
-      recordsReceived += results.length;
+      recordsReceived +=
+        results.length;
 
       for (const item of results) {
         const warningMs =
@@ -527,25 +572,32 @@ export async function GET(
 
         const publishedAt =
           item.date ??
-          item.attributes?.timestamp ??
+          item.attributes
+            ?.timestamp ??
           null;
 
         const validFrom =
-          item.attributes?.valid_from ??
+          item.attributes
+            ?.valid_from ??
           null;
 
         const validTo =
-          item.attributes?.valid_to ??
+          item.attributes
+            ?.valid_to ??
           null;
 
         const headingMs =
-          item.value?.heading?.ms ??
-          item.attributes?.title?.ms ??
+          item.value
+            ?.heading?.ms ??
+          item.attributes
+            ?.title?.ms ??
           "Amaran MetMalaysia";
 
         const headingEn =
-          item.value?.heading?.en ??
-          item.attributes?.title?.en ??
+          item.value
+            ?.heading?.en ??
+          item.attributes
+            ?.title?.en ??
           "MetMalaysia Alert";
 
         const alertStatus =
@@ -658,10 +710,6 @@ export async function GET(
     }
   }
 
-  /*
-   * Tandakan amaran yang sudah tamat
-   * berdasarkan valid_to rasmi.
-   */
   await sql`
     update public.official_alerts
     set
@@ -673,13 +721,60 @@ export async function GET(
       and valid_to < now()
   `;
 
+  const completedAt = new Date();
+
+  const runStatus =
+    errors.length === 0
+      ? "success"
+      : "partial_success";
+
+  try {
+    await recordIngestionRun({
+      jobType:
+        "met_warnings",
+
+      batchNumber: null,
+
+      runStatus,
+
+      recordsReceived,
+
+      recordsProcessed:
+        sabahRecords,
+
+      recordsSaved:
+        savedRecords,
+
+      errorCount:
+        errors.length,
+
+      startedAt,
+      completedAt,
+
+      details: {
+        date: today,
+
+        categoriesChecked:
+          warningCategories.length,
+
+        categories:
+          warningCategories,
+
+        errors
+      }
+    });
+  } catch (loggingError) {
+    console.error(
+      "Unable to record warning ingestion run:",
+      loggingError
+    );
+  }
+
   return NextResponse.json({
-    status:
-      errors.length === 0
-        ? "success"
-        : "partial_success",
+    status: runStatus,
 
     source: "MetMalaysia",
+
     date: today,
 
     categoriesChecked:
@@ -692,6 +787,6 @@ export async function GET(
     errors,
 
     completedAt:
-      new Date().toISOString()
+      completedAt.toISOString()
   });
 }
