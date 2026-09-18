@@ -28,6 +28,7 @@ type DistrictItem = {
   latitude: number | null;
   longitude: number | null;
   forecast: DistrictForecast;
+  risks?: unknown[];
 };
 
 type DistrictResponse = {
@@ -161,7 +162,7 @@ function getForecastColor(
   return "#38bdf8";
 }
 
-function buildForecastPopup(
+function buildForecastDetails(
   district: DistrictItem
 ) {
   const forecast =
@@ -169,45 +170,99 @@ function buildForecastPopup(
 
   if (!forecast.available) {
     return `
-      <div style="min-width:230px">
-        <b>${escapeHtml(
-          district.district
-        )}</b>
+      <b>Ramalan belum tersedia</b>
 
-        <br>
+      <br>
 
-        <small>
-          ${escapeHtml(
-            district.locationId
-          )}
-        </small>
-
-        <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
-
-        <b>
-          Ramalan belum tersedia
-        </b>
-
-        <br>
-
-        <small>
-          MetMalaysia tidak memulangkan ramalan GENERAL bagi lokasi ini pada tarikh semasa.
-        </small>
-
-        <br><br>
-
-        <small>
-          Sumber: MetMalaysia via SDIP Supabase
-        </small>
-      </div>
+      <small>
+        MetMalaysia tidak memulangkan ramalan GENERAL bagi lokasi ini pada tarikh semasa.
+      </small>
     `;
   }
 
   return `
+    <b>
+      ${escapeHtml(
+        forecast.significantWeather ??
+          "Tiada cuaca signifikan dinyatakan"
+      )}
+    </b>
+
+    <table style="width:100%;margin-top:8px;font-size:12px">
+      <tr>
+        <td>Pagi</td>
+
+        <td style="text-align:right">
+          <b>
+            ${escapeHtml(
+              forecast.morning ?? "—"
+            )}
+          </b>
+        </td>
+      </tr>
+
+      <tr>
+        <td>Petang</td>
+
+        <td style="text-align:right">
+          <b>
+            ${escapeHtml(
+              forecast.afternoon ?? "—"
+            )}
+          </b>
+        </td>
+      </tr>
+
+      <tr>
+        <td>Malam</td>
+
+        <td style="text-align:right">
+          <b>
+            ${escapeHtml(
+              forecast.night ?? "—"
+            )}
+          </b>
+        </td>
+      </tr>
+
+      <tr>
+        <td>Suhu</td>
+
+        <td style="text-align:right">
+          <b>
+            ${escapeHtml(
+              forecast.minimumTemperature ??
+                "—"
+            )}°C–${escapeHtml(
+              forecast.maximumTemperature ??
+                "—"
+            )}°C
+          </b>
+        </td>
+      </tr>
+    </table>
+
+    <small>
+      Dikemas kini:
+      ${escapeHtml(
+        formatMalaysiaTime(
+          forecast.lastUpdated
+        )
+      )}
+    </small>
+  `;
+}
+
+function buildForecastPopup(
+  district: DistrictItem
+) {
+  return `
     <div style="min-width:250px">
-      <b>${escapeHtml(
-        district.district
-      )}</b>
+      <b>
+        ${escapeHtml(
+          district.district
+        )}
+      </b>
 
       <br>
 
@@ -219,87 +274,23 @@ function buildForecastPopup(
 
       <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
 
-      <b>
-        ${escapeHtml(
-          forecast.significantWeather ??
-            "Tiada cuaca signifikan dinyatakan"
-        )}
-      </b>
-
-      <table style="width:100%;margin-top:8px;font-size:12px">
-        <tr>
-          <td>Pagi</td>
-
-          <td style="text-align:right">
-            <b>
-              ${escapeHtml(
-                forecast.morning ?? "—"
-              )}
-            </b>
-          </td>
-        </tr>
-
-        <tr>
-          <td>Petang</td>
-
-          <td style="text-align:right">
-            <b>
-              ${escapeHtml(
-                forecast.afternoon ?? "—"
-              )}
-            </b>
-          </td>
-        </tr>
-
-        <tr>
-          <td>Malam</td>
-
-          <td style="text-align:right">
-            <b>
-              ${escapeHtml(
-                forecast.night ?? "—"
-              )}
-            </b>
-          </td>
-        </tr>
-
-        <tr>
-          <td>Suhu</td>
-
-          <td style="text-align:right">
-            <b>
-              ${escapeHtml(
-                forecast.minimumTemperature ??
-                  "—"
-              )}°C–${escapeHtml(
-                forecast.maximumTemperature ??
-                  "—"
-              )}°C
-            </b>
-          </td>
-        </tr>
-      </table>
+      ${buildForecastDetails(
+        district
+      )}
 
       <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
 
       <small>
         Sumber asal: MetMalaysia
-
         <br>
-
-        Dikemas kini:
-        ${escapeHtml(
-          formatMalaysiaTime(
-            forecast.lastUpdated
-          )
-        )}
+        Saluran data: SDIP Supabase
       </small>
     </div>
   `;
 }
 
 function buildAlertPopup(
-  districtName: string,
+  district: DistrictItem,
   alerts: OfficialAlert[]
 ) {
   const alertContent = alerts
@@ -364,10 +355,10 @@ function buildAlertPopup(
     `);
 
   return `
-    <div style="min-width:270px;max-width:360px">
+    <div style="min-width:280px;max-width:370px">
       <b>
         ${escapeHtml(
-          districtName
+          district.district
         )}
       </b>
 
@@ -378,6 +369,18 @@ function buildAlertPopup(
       </small>
 
       ${alertContent}
+
+      <hr style="border:0;border-top:1px solid #ddd;margin:10px 0">
+
+      <small>
+        Ramalan cuaca lokasi
+      </small>
+
+      <div style="margin-top:6px">
+        ${buildForecastDetails(
+          district
+        )}
+      </div>
     </div>
   `;
 }
@@ -406,7 +409,7 @@ function buildGeneralAlertPopup(
           <small>
             ${escapeHtml(
               alert.datatype
-            )}
+            )} · OFFICIAL ALERT
           </small>
 
           <p style="font-size:12px;line-height:1.45;white-space:pre-line;margin:7px 0">
@@ -534,10 +537,6 @@ export default function SabahMap() {
         7
       );
 
-      /*
-       * Esri Satellite dengan label
-       * menjadi basemap utama.
-       */
       const esriImageryTiles =
         L.tileLayer(
           "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -684,7 +683,8 @@ export default function SabahMap() {
           : [];
 
       /*
-       * Marker forecast rasmi.
+       * Forecast marker.
+       * Marker ini boleh diklik.
        */
       districts.forEach(
         (district) => {
@@ -707,11 +707,13 @@ export default function SabahMap() {
                 district.longitude
               ],
               {
-                radius: 6,
+                radius: 7,
                 color: "#ffffff",
                 weight: 2,
                 fillColor: color,
-                fillOpacity: 0.95
+                fillOpacity: 0.95,
+                interactive: true,
+                bubblingMouseEvents: false
               }
             );
 
@@ -721,7 +723,7 @@ export default function SabahMap() {
             ),
             {
               direction: "top",
-              offset: [0, -5]
+              offset: [0, -6]
             }
           );
 
@@ -741,8 +743,8 @@ export default function SabahMap() {
         new Set<string>();
 
       /*
-       * Marker pulse bagi daerah
-       * yang dinamakan dalam amaran.
+       * Pulse marker bagi daerah
+       * yang dinamakan dalam warning.
        */
       districts.forEach(
         (district) => {
@@ -790,6 +792,11 @@ export default function SabahMap() {
             }
           );
 
+          /*
+           * Bulatan ini hanya visual.
+           * interactive:false memastikan
+           * ia tidak menghalang klik.
+           */
           L.circle(
             [
               district.latitude,
@@ -802,7 +809,8 @@ export default function SabahMap() {
               color: "#ef4444",
               weight: 2,
               fillColor: "#ef4444",
-              fillOpacity: 0.14
+              fillOpacity: 0.14,
+              interactive: false
             }
           ).addTo(
             warningLayer
@@ -837,6 +845,11 @@ export default function SabahMap() {
               ]
             });
 
+          /*
+           * Pulse boleh diklik.
+           * Popup pulse turut memaparkan
+           * alert dan forecast daerah.
+           */
           L.marker(
             [
               district.latitude,
@@ -847,6 +860,8 @@ export default function SabahMap() {
                 "warningMarkerPane",
               icon: pulseIcon,
               keyboard: true,
+              interactive: true,
+              bubblingMouseEvents: false,
 
               title:
                 `Amaran aktif: ${district.district}`
@@ -866,7 +881,7 @@ export default function SabahMap() {
             )
             .bindPopup(
               buildAlertPopup(
-                district.district,
+                district,
                 matchedAlerts
               )
             );
@@ -874,10 +889,8 @@ export default function SabahMap() {
       );
 
       /*
-       * Amaran yang menyebut Sabah
-       * tetapi tidak memberikan daerah
-       * khusus ditunjukkan sebagai marker
-       * negeri, bukan lokasi kejadian tepat.
+       * Warning umum yang tidak dapat
+       * dipadankan dengan daerah tertentu.
        */
       const generalAlerts =
         alerts.filter(
@@ -927,6 +940,10 @@ export default function SabahMap() {
 
             icon:
               generalPulseIcon,
+
+            keyboard: true,
+            interactive: true,
+            bubblingMouseEvents: false,
 
             title:
               "Amaran umum Sabah"
@@ -1048,6 +1065,8 @@ export default function SabahMap() {
         .sdipPulseIcon {
           background: transparent !important;
           border: 0 !important;
+          pointer-events: auto !important;
+          cursor: pointer !important;
         }
 
         .sdipPulse {
@@ -1055,6 +1074,7 @@ export default function SabahMap() {
           display: block;
           width: 38px;
           height: 38px;
+          pointer-events: none;
         }
 
         .sdipPulseGeneral {
@@ -1068,6 +1088,7 @@ export default function SabahMap() {
           border: 3px solid
             rgba(239, 68, 68, 0.9);
           border-radius: 50%;
+          pointer-events: none;
           animation:
             sdipOfficialAlertPulse
             1.8s ease-out infinite;
@@ -1091,6 +1112,7 @@ export default function SabahMap() {
               rgba(239, 68, 68, 0.3),
             0 0 18px
               rgba(239, 68, 68, 0.95);
+          pointer-events: none;
           transform:
             translate(-50%, -50%);
         }
