@@ -1,0 +1,49 @@
+name: MetMalaysia Sabah Forecast Ingestion
+
+on:
+  schedule:
+    # Setiap jam pada minit ke-5
+    - cron: "5 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: met-forecasts-cron
+  cancel-in-progress: false
+
+jobs:
+  ingest-forecasts:
+    name: Capture Sabah forecasts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Call forecast batches
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_ENDPOINT: https://sdip-blue.vercel.app/api/cron/met-forecasts
+        run: |
+          for batch in 0 1 2 3
+          do
+            echo "Processing forecast batch ${batch}..."
+
+            response=$(curl \
+              --fail-with-body \
+              --silent \
+              --show-error \
+              --retry 2 \
+              --retry-delay 15 \
+              --max-time 90 \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              "${CRON_ENDPOINT}?batch=${batch}")
+
+            echo "${response}"
+
+            if [ "${batch}" -lt 3 ]; then
+              echo "Waiting 65 seconds before next batch..."
+              sleep 65
+            fi
+          done
