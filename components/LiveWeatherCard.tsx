@@ -11,28 +11,25 @@ import {
   SABAH_MET_LOCATIONS
 } from "@/lib/metMalaysiaLocations";
 
-type MetResult = {
+type ForecastResult = {
   locationid: string;
   locationname: string;
-  locationrootid: string;
-  locationrootname: string;
+  locationrootid: string | null;
+  locationrootname: string | null;
   date: string;
   datatype: string;
-  value: string | number;
+  value: string | number | null;
   latitude: number | null;
   longitude: number | null;
 
   attributes?: {
-    unit?: string;
-    code?: string;
-    when?: string;
-    ref?: string | null;
+    unit?: string | null;
     valid_from?: string | null;
     valid_to?: string | null;
   };
 };
 
-type WeatherResponse = {
+type ForecastResponse = {
   status: string;
   source: string;
   requestType: string;
@@ -42,10 +39,13 @@ type WeatherResponse = {
     metadata?: {
       resultset?: {
         count?: number;
+        locationid?: string;
+        locationname?: string;
+        forecast_date?: string;
       };
     };
 
-    results: MetResult[];
+    results: ForecastResult[];
   };
 };
 
@@ -87,8 +87,8 @@ export default function LiveWeatherCard() {
     DEFAULT_SABAH_MET_LOCATION.id
   );
 
-  const [weather, setWeather] =
-    useState<WeatherResponse | null>(null);
+  const [forecast, setForecast] =
+    useState<ForecastResponse | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -110,22 +110,20 @@ export default function LiveWeatherCard() {
     const controller =
       new AbortController();
 
-    async function loadWeather() {
+    async function loadForecast() {
       try {
         setLoading(true);
         setError("");
-        setWeather(null);
+        setForecast(null);
 
         const params =
           new URLSearchParams({
-            type: "forecast",
             locationid:
-              selectedLocationId,
-            lang: "ms"
+              selectedLocationId
           });
 
         const response = await fetch(
-          `/api/weather?${params.toString()}`,
+          `/api/forecast?${params.toString()}`,
           {
             cache: "no-store",
             signal: controller.signal
@@ -134,23 +132,23 @@ export default function LiveWeatherCard() {
 
         if (!response.ok) {
           throw new Error(
-            "MetMalaysia request failed"
+            "Forecast database request failed"
           );
         }
 
         const result =
           (await response.json()) as
-            WeatherResponse;
+            ForecastResponse;
 
         if (
           result.status !== "success"
         ) {
           throw new Error(
-            "MetMalaysia returned an error"
+            "Forecast API returned an error"
           );
         }
 
-        setWeather(result);
+        setForecast(result);
       } catch (requestError) {
         if (
           requestError instanceof DOMException &&
@@ -161,14 +159,14 @@ export default function LiveWeatherCard() {
         }
 
         console.error(
-          "Weather forecast error:",
+          "Forecast error:",
           requestError
         );
 
-        setWeather(null);
+        setForecast(null);
 
         setError(
-          "Ramalan rasmi tidak dapat dimuatkan."
+          "Ramalan rasmi tidak dapat dimuatkan daripada pangkalan data SDIP."
         );
       } finally {
         if (
@@ -179,7 +177,7 @@ export default function LiveWeatherCard() {
       }
     }
 
-    loadWeather();
+    loadForecast();
 
     return () => {
       controller.abort();
@@ -187,7 +185,7 @@ export default function LiveWeatherCard() {
   }, [selectedLocationId]);
 
   const results =
-    weather?.data?.results ?? [];
+    forecast?.data?.results ?? [];
 
   function getValue(
     datatype: string
@@ -227,9 +225,9 @@ export default function LiveWeatherCard() {
       : "—";
 
   const updatedTime =
-    weather?.retrievedAt
+    forecast?.retrievedAt
       ? formatMalaysiaDateTime(
-          weather.retrievedAt
+          forecast.retrievedAt
         )
       : "—";
 
@@ -297,8 +295,8 @@ export default function LiveWeatherCard() {
           </h2>
 
           <p>
-            Mendapatkan ramalan rasmi
-            daripada MetMalaysia.
+            Membaca ramalan rasmi daripada
+            pangkalan data SDIP.
           </p>
         </>
       )}
@@ -325,7 +323,7 @@ export default function LiveWeatherCard() {
 
       {!loading &&
         !error &&
-        weather &&
+        forecast &&
         results.length === 0 && (
           <>
             <h2>
@@ -333,16 +331,15 @@ export default function LiveWeatherCard() {
             </h2>
 
             <p>
-              MetMalaysia belum
-              menyediakan ramalan GENERAL
-              untuk{" "}
+              MetMalaysia belum menyediakan
+              ramalan GENERAL untuk{" "}
               {selectedLocation.name} pada
               tarikh semasa.
             </p>
 
             <small className="notice">
-              Permintaan berjaya tetapi
-              tiada rekod dipulangkan.
+              Tiada rekod ramalan dijumpai
+              dalam pangkalan data SDIP.
               <br />
 
               Lokasi:{" "}
@@ -351,8 +348,6 @@ export default function LiveWeatherCard() {
               {selectedLocation.id}
               <br />
 
-              Sumber: MetMalaysia
-              {" · "}
               Bukan ralat sistem
             </small>
           </>
@@ -360,7 +355,7 @@ export default function LiveWeatherCard() {
 
       {!loading &&
         !error &&
-        weather &&
+        forecast &&
         results.length > 0 && (
           <>
             <h2>
@@ -371,7 +366,10 @@ export default function LiveWeatherCard() {
             </h2>
 
             <p>
-              {significantWeather
+              {significantWeather?.value !==
+              null &&
+              significantWeather?.value !==
+                undefined
                 ? String(
                     significantWeather.value
                   )
@@ -383,7 +381,8 @@ export default function LiveWeatherCard() {
                 Pagi
 
                 <b>
-                  {morning !== undefined
+                  {morning !== undefined &&
+                  morning !== null
                     ? String(morning)
                     : "—"}
                 </b>
@@ -393,7 +392,8 @@ export default function LiveWeatherCard() {
                 Petang
 
                 <b>
-                  {afternoon !== undefined
+                  {afternoon !== undefined &&
+                  afternoon !== null
                     ? String(afternoon)
                     : "—"}
                 </b>
@@ -403,7 +403,8 @@ export default function LiveWeatherCard() {
                 Malam
 
                 <b>
-                  {night !== undefined
+                  {night !== undefined &&
+                  night !== null
                     ? String(night)
                     : "—"}
                 </b>
@@ -414,13 +415,15 @@ export default function LiveWeatherCard() {
 
                 <b>
                   {minimumTemperature !==
-                  undefined
+                    undefined &&
+                  minimumTemperature !== null
                     ? String(
                         minimumTemperature
                       )
                     : "—"}
                   °C–{maximumTemperature !==
-                  undefined
+                    undefined &&
+                  maximumTemperature !== null
                     ? String(
                         maximumTemperature
                       )
@@ -435,18 +438,16 @@ export default function LiveWeatherCard() {
               {forecastDate}
               <br />
 
-              Dikemas kini:{" "}
+              Data disimpan:{" "}
               {updatedTime} MYT
               <br />
 
-              Sumber: MetMalaysia
+              Sumber asal: MetMalaysia
+              <br />
+
+              Saluran data: SDIP Supabase
               {" · "}
               {selectedLocation.id}
-
-              {significantWeather
-                ?.attributes?.when
-                ? ` · ${significantWeather.attributes.when}`
-                : ""}
             </small>
           </>
         )}
