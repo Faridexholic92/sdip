@@ -100,7 +100,8 @@ export default function LiveWeatherCard() {
     () =>
       SABAH_MET_LOCATIONS.find(
         (location) =>
-          location.id === selectedLocationId
+          location.id ===
+          selectedLocationId
       ) ?? DEFAULT_SABAH_MET_LOCATION,
     [selectedLocationId]
   );
@@ -113,6 +114,7 @@ export default function LiveWeatherCard() {
       try {
         setLoading(true);
         setError("");
+        setWeather(null);
 
         const params =
           new URLSearchParams({
@@ -137,7 +139,8 @@ export default function LiveWeatherCard() {
         }
 
         const result =
-          (await response.json()) as WeatherResponse;
+          (await response.json()) as
+            WeatherResponse;
 
         if (
           result.status !== "success"
@@ -186,7 +189,9 @@ export default function LiveWeatherCard() {
   const results =
     weather?.data?.results ?? [];
 
-  function getValue(datatype: string) {
+  function getValue(
+    datatype: string
+  ) {
     return results.find(
       (item) =>
         item.datatype === datatype
@@ -301,7 +306,7 @@ export default function LiveWeatherCard() {
       {!loading && error && (
         <>
           <h2>
-            Data tidak tersedia
+            Data tidak dapat dimuatkan
           </h2>
 
           <p>{error}</p>
@@ -309,19 +314,59 @@ export default function LiveWeatherCard() {
           <small className="notice">
             Lokasi:{" "}
             {selectedLocation.name}
-            {" · ID: "}
+            {" · "}
             {selectedLocation.id}
+            <br />
+
+            Sila cuba semula kemudian.
           </small>
         </>
       )}
 
       {!loading &&
         !error &&
-        weather && (
+        weather &&
+        results.length === 0 && (
+          <>
+            <h2>
+              Ramalan belum tersedia
+            </h2>
+
+            <p>
+              MetMalaysia belum
+              menyediakan ramalan GENERAL
+              untuk{" "}
+              {selectedLocation.name} pada
+              tarikh semasa.
+            </p>
+
+            <small className="notice">
+              Permintaan berjaya tetapi
+              tiada rekod dipulangkan.
+              <br />
+
+              Lokasi:{" "}
+              {selectedLocation.name}
+              {" · "}
+              {selectedLocation.id}
+              <br />
+
+              Sumber: MetMalaysia
+              {" · "}
+              Bukan ralat sistem
+            </small>
+          </>
+        )}
+
+      {!loading &&
+        !error &&
+        weather &&
+        results.length > 0 && (
           <>
             <h2>
               Cuaca{" "}
-              {results[0]?.locationname ??
+              {results[0]
+                ?.locationname ??
                 selectedLocation.name}
             </h2>
 
@@ -336,6 +381,7 @@ export default function LiveWeatherCard() {
             <ul>
               <li>
                 Pagi
+
                 <b>
                   {morning !== undefined
                     ? String(morning)
@@ -345,6 +391,7 @@ export default function LiveWeatherCard() {
 
               <li>
                 Petang
+
                 <b>
                   {afternoon !== undefined
                     ? String(afternoon)
@@ -354,6 +401,7 @@ export default function LiveWeatherCard() {
 
               <li>
                 Malam
+
                 <b>
                   {night !== undefined
                     ? String(night)
@@ -363,6 +411,7 @@ export default function LiveWeatherCard() {
 
               <li>
                 Suhu
+
                 <b>
                   {minimumTemperature !==
                   undefined
