@@ -3,10 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
-import DistrictMonitoring from "@/components/DistrictMonitoring";
 import LiveKpis from "@/components/LiveKpis";
-import LiveWeatherCard from "@/components/LiveWeatherCard";
-import OfficialAlert from "@/components/OfficialAlert";
 import PortalSidebar from "@/components/PortalSidebar";
 
 const SabahMap = dynamic(
@@ -25,35 +22,68 @@ const SabahMap = dynamic(
 const serviceHealth = [
   {
     name: "Application",
-    status: "ONLINE"
+    status: "ONLINE",
+    color: "#86efac"
   },
   {
     name: "Supabase Database",
-    status: "CONNECTED"
+    status: "CONNECTED",
+    color: "#86efac"
   },
   {
     name: "MetMalaysia Forecast",
-    status: "CONNECTED"
+    status: "CONNECTED",
+    color: "#86efac"
   },
   {
     name: "MetMalaysia Warnings",
-    status: "CONNECTED"
+    status: "CONNECTED",
+    color: "#86efac"
   },
   {
     name: "Supabase Cron",
-    status: "ACTIVE"
-  },
-  {
-    name: "District Monitoring API",
-    status: "ONLINE"
+    status: "ACTIVE",
+    color: "#86efac"
   },
   {
     name: "Esri Basemap",
-    status: "ACTIVE"
+    status: "ACTIVE",
+    color: "#86efac"
   },
   {
-    name: "Qwen gateway",
-    status: "NOT CONFIGURED"
+    name: "Qwen AI",
+    status: "DISABLED",
+    color: "#94a3b8"
+  }
+];
+
+const quickActions = [
+  {
+    title: "Live Weather",
+    description:
+      "Lihat forecast terperinci dan pilih lokasi Sabah.",
+    href: "/weather",
+    label: "Open Weather",
+    color: "#38bdf8",
+    icon: "☁"
+  },
+  {
+    title: "Official Alerts",
+    description:
+      "Semak semua amaran aktif rasmi daripada MetMalaysia.",
+    href: "/alerts",
+    label: "Open Alerts",
+    color: "#ef4444",
+    icon: "!"
+  },
+  {
+    title: "Weather Map",
+    description:
+      "Lihat forecast dan amaran aktif pada peta Esri.",
+    href: "#map",
+    label: "View Map",
+    color: "#f59e0b",
+    icon: "◎"
   }
 ];
 
@@ -70,8 +100,8 @@ export default function Home() {
             </h1>
 
             <p>
-              Official weather monitoring
-              and disaster intelligence
+              Ringkasan data cuaca dan
+              amaran rasmi semasa
             </p>
           </div>
 
@@ -81,25 +111,92 @@ export default function Home() {
               display: "inline-flex",
               minHeight: "40px",
               padding: "0 14px",
+              gap: "8px",
               alignItems: "center",
               justifyContent: "center",
               border:
-                "1px solid rgba(180,204,231,0.2)",
+                "1px solid rgba(239,68,68,0.3)",
               borderRadius: "8px",
               background:
-                "rgba(94,159,232,0.12)",
-              color: "#ffffff",
+                "rgba(239,68,68,0.1)",
+              color: "#fecaca",
               fontSize: "12px",
               fontWeight: 700,
-              textDecoration: "none"
+              textDecoration: "none",
+              whiteSpace: "nowrap"
             }}
           >
-            View Alert Center
+            <span
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: "#ef4444",
+                boxShadow:
+                  "0 0 0 4px rgba(239,68,68,0.14)"
+              }}
+            />
+
+            Alert Center
           </Link>
         </header>
 
         <div className="content">
-          <OfficialAlert />
+          <section
+            className="panel"
+            style={{
+              display: "flex",
+              minHeight: "58px",
+              padding: "12px 16px",
+              gap: "14px",
+              alignItems: "center",
+              justifyContent:
+                "space-between",
+              borderColor:
+                "rgba(94,159,232,0.25)",
+              background:
+                "linear-gradient(90deg, rgba(94,159,232,0.1), rgba(11,25,42,0.95))"
+            }}
+          >
+            <div>
+              <small
+                style={{
+                  color: "#5e9fe8",
+                  fontWeight: 800,
+                  letterSpacing:
+                    "0.08em"
+                }}
+              >
+                OFFICIAL DATA
+              </small>
+
+              <p
+                style={{
+                  margin: "5px 0 0",
+                  color: "#dbe7f5",
+                  fontSize: "13px"
+                }}
+              >
+                Data forecast dan amaran
+                dalam portal ini berasal
+                daripada MetMalaysia.
+              </p>
+            </div>
+
+            <small
+              style={{
+                color: "#9fb0c5",
+                textAlign: "right",
+                lineHeight: 1.5
+              }}
+            >
+              Warnings: setiap 10 minit
+              <br />
+              Forecasts: setiap jam
+            </small>
+          </section>
 
           <LiveKpis />
 
@@ -116,19 +213,38 @@ export default function Home() {
                   </h2>
 
                   <p>
-                    Official MetMalaysia
-                    forecasts and active
-                    warnings
+                    Forecast rasmi dan
+                    amaran aktif pada peta
+                    Esri
                   </p>
                 </div>
 
                 <span
                   style={{
+                    display:
+                      "inline-flex",
+                    gap: "6px",
+                    alignItems:
+                      "center",
                     color: "#9fb0c5",
-                    fontSize: "11px"
+                    fontSize: "10px",
+                    whiteSpace: "nowrap"
                   }}
                 >
-                  Esri + MetMalaysia
+                  <i
+                    style={{
+                      display:
+                        "inline-block",
+                      width: "7px",
+                      height: "7px",
+                      borderRadius:
+                        "50%",
+                      background:
+                        "#22c55e"
+                    }}
+                  />
+
+                  LIVE DATA
                 </span>
               </div>
 
@@ -136,7 +252,156 @@ export default function Home() {
             </section>
 
             <aside className="stack">
-              <LiveWeatherCard />
+              <article
+                className="panel"
+                style={{
+                  padding: "16px"
+                }}
+              >
+                <small
+                  style={{
+                    display: "block",
+                    color: "#5e9fe8",
+                    fontWeight: 800,
+                    letterSpacing:
+                      "0.08em"
+                  }}
+                >
+                  QUICK ACCESS
+                </small>
+
+                <h2
+                  style={{
+                    margin:
+                      "8px 0 4px",
+                    fontSize: "16px"
+                  }}
+                >
+                  Portal functions
+                </h2>
+
+                <p
+                  style={{
+                    margin:
+                      "0 0 14px",
+                    color: "#9fb0c5",
+                    fontSize: "12px",
+                    lineHeight: 1.5
+                  }}
+                >
+                  Buka halaman khusus untuk
+                  maklumat terperinci.
+                </p>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "10px"
+                  }}
+                >
+                  {quickActions.map(
+                    (action) => (
+                      <Link
+                        key={action.title}
+                        href={action.href}
+                        style={{
+                          display:
+                            "grid",
+                          gridTemplateColumns:
+                            "38px minmax(0, 1fr)",
+                          gap: "10px",
+                          padding: "11px",
+                          alignItems:
+                            "center",
+                          border:
+                            `1px solid ${action.color}33`,
+                          borderRadius:
+                            "8px",
+                          background:
+                            `${action.color}0d`,
+                          color:
+                            "#f4f7fb",
+                          textDecoration:
+                            "none"
+                        }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            display:
+                              "grid",
+                            width: "38px",
+                            height: "38px",
+                            placeItems:
+                              "center",
+                            borderRadius:
+                              "8px",
+                            background:
+                              `${action.color}1f`,
+                            color:
+                              action.color,
+                            fontSize:
+                              "18px",
+                            fontWeight:
+                              800
+                          }}
+                        >
+                          {action.icon}
+                        </span>
+
+                        <span>
+                          <b
+                            style={{
+                              display:
+                                "block",
+                              fontSize:
+                                "12px"
+                            }}
+                          >
+                            {action.title}
+                          </b>
+
+                          <small
+                            style={{
+                              display:
+                                "block",
+                              marginTop:
+                                "3px",
+                              color:
+                                "#9fb0c5",
+                              fontSize:
+                                "10px",
+                              lineHeight:
+                                1.4
+                            }}
+                          >
+                            {
+                              action.description
+                            }
+                          </small>
+
+                          <small
+                            style={{
+                              display:
+                                "block",
+                              marginTop:
+                                "5px",
+                              color:
+                                action.color,
+                              fontSize:
+                                "9px",
+                              fontWeight:
+                                800
+                            }}
+                          >
+                            {action.label} →
+                          </small>
+                        </span>
+                      </Link>
+                    )
+                  )}
+                </div>
+              </article>
 
               <article className="panel health">
                 <h3>
@@ -152,395 +417,194 @@ export default function Home() {
                         {service.name}
                       </span>
 
-                      <b>
+                      <b
+                        style={{
+                          color:
+                            service.color
+                        }}
+                      >
                         {service.status}
                       </b>
                     </div>
                   )
                 )}
 
-                <small className="notice">
-                  Forecast ingestion runs
-                  hourly. Official warning
-                  ingestion runs every
-                  10 minutes.
+                <small
+                  className="notice"
+                  style={{
+                    marginTop: "12px"
+                  }}
+                >
+                  Status ini ialah ringkasan
+                  konfigurasi portal. Data
+                  timestamp dipaparkan pada
+                  halaman terperinci.
                 </small>
               </article>
             </aside>
           </div>
 
-          <div id="districts">
-            <DistrictMonitoring />
-          </div>
+          <section
+            id="sources"
+            className="panel"
+            style={{
+              marginTop: "14px",
+              padding: "16px"
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "16px",
+                alignItems:
+                  "flex-start",
+                justifyContent:
+                  "space-between",
+                flexWrap: "wrap"
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: "700px"
+                }}
+              >
+                <small
+                  style={{
+                    display: "block",
+                    color: "#5e9fe8",
+                    fontWeight: 800,
+                    letterSpacing:
+                      "0.08em"
+                  }}
+                >
+                  DATA TRANSPARENCY
+                </small>
 
-          <section className="panel tablePanel">
-            <div className="panelHead">
-              <div>
-                <h2>
-                  Data Transparency
+                <h2
+                  style={{
+                    margin:
+                      "8px 0 5px",
+                    fontSize: "15px"
+                  }}
+                >
+                  Official sources only
                 </h2>
 
-                <p>
-                  Sources, classifications
-                  and update methods
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#9fb0c5",
+                    fontSize: "12px",
+                    lineHeight: 1.6
+                  }}
+                >
+                  Forecasts and warnings
+                  originate from
+                  MetMalaysia. Map tiles
+                  are provided by Esri and
+                  OpenStreetMap. SDIP does
+                  not currently publish
+                  fabricated disaster-risk
+                  scores.
                 </p>
               </div>
-            </div>
 
-            <div className="tableWrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      Information
-                    </th>
-
-                    <th>
-                      Source
-                    </th>
-
-                    <th>
-                      Classification
-                    </th>
-
-                    <th>
-                      Update Method
-                    </th>
-
-                    <th>
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr>
-                    <td>
-                      Sabah district
-                      forecasts
-                    </td>
-
-                    <td>
-                      MetMalaysia API v2.1
-                    </td>
-
-                    <td>
-                      Official forecast
-                    </td>
-
-                    <td>
-                      Supabase Cron hourly
-                    </td>
-
-                    <td>
-                      LIVE
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Sabah weather warnings
-                    </td>
-
-                    <td>
-                      MetMalaysia API v2.1
-                    </td>
-
-                    <td>
-                      Official warning
-                    </td>
-
-                    <td>
-                      Cron every 10 minutes
-                    </td>
-
-                    <td>
-                      LIVE
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      District monitoring
-                    </td>
-
-                    <td>
-                      SDIP Supabase
-                    </td>
-
-                    <td>
-                      Aggregated official
-                      forecast
-                    </td>
-
-                    <td>
-                      Stored MetMalaysia
-                      records
-                    </td>
-
-                    <td>
-                      LIVE
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Satellite basemap
-                    </td>
-
-                    <td>
-                      Esri World Imagery
-                    </td>
-
-                    <td>
-                      Geographic reference
-                    </td>
-
-                    <td>
-                      Esri tile service
-                    </td>
-
-                    <td>
-                      LIVE
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Alternative basemap
-                    </td>
-
-                    <td>
-                      OpenStreetMap
-                    </td>
-
-                    <td>
-                      Geographic reference
-                    </td>
-
-                    <td>
-                      Public tile service
-                    </td>
-
-                    <td>
-                      AVAILABLE
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      AI-generated
-                      explanation
-                    </td>
-
-                    <td>
-                      Qwen AI
-                    </td>
-
-                    <td>
-                      Not operational
-                    </td>
-
-                    <td>
-                      Not configured
-                    </td>
-
-                    <td>
-                      DISABLED
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  flexWrap: "wrap"
+                }}
+              >
+                {[
+                  "MetMalaysia",
+                  "Supabase",
+                  "Esri",
+                  "OpenStreetMap"
+                ].map((source) => (
+                  <span
+                    key={source}
+                    style={{
+                      padding:
+                        "6px 9px",
+                      border:
+                        "1px solid rgba(134,239,172,0.2)",
+                      borderRadius:
+                        "999px",
+                      background:
+                        "rgba(34,197,94,0.07)",
+                      color:
+                        "#86efac",
+                      fontSize:
+                        "9px",
+                      fontWeight: 800
+                    }}
+                  >
+                    {source}
+                  </span>
+                ))}
+              </div>
             </div>
           </section>
 
-          <section className="panel tablePanel">
-            <div className="panelHead">
-              <div>
-                <h2>
-                  Data Coverage Notes
-                </h2>
+          <section
+            className="panel"
+            style={{
+              marginTop: "14px",
+              padding: "14px 16px",
+              borderColor:
+                "rgba(234,194,107,0.2)",
+              background:
+                "rgba(234,194,107,0.04)"
+            }}
+          >
+            <small
+              style={{
+                color: "#eac26b",
+                fontWeight: 800
+              }}
+            >
+              IMPORTANT
+            </small>
 
-                <p>
-                  Known limitations in the
-                  current datasets
-                </p>
-              </div>
-            </div>
-
-            <div className="tableWrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      Dataset
-                    </th>
-
-                    <th>
-                      Coverage
-                    </th>
-
-                    <th>
-                      Limitation
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr>
-                    <td>
-                      District forecast
-                    </td>
-
-                    <td>
-                      30 of 32 MetMalaysia
-                      Sabah locations
-                    </td>
-
-                    <td>
-                      Paitan and Pensiangan
-                      currently return no
-                      GENERAL forecast.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Map coordinates
-                    </td>
-
-                    <td>
-                      Locations with
-                      coordinates supplied
-                      by MetMalaysia
-                    </td>
-
-                    <td>
-                      Null coordinates are
-                      not replaced with
-                      invented positions.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Official warnings
-                    </td>
-
-                    <td>
-                      Sabah-related
-                      MetMalaysia bulletins
-                    </td>
-
-                    <td>
-                      Statewide warnings use
-                      a general reference
-                      marker.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Disaster risk
-                    </td>
-
-                    <td>
-                      No verified risk
-                      dataset connected
-                    </td>
-
-                    <td>
-                      No fabricated risk
-                      scores are published.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="panel tablePanel">
-            <div className="panelHead">
-              <div>
-                <h2>
-                  Trust &amp; Disclaimer
-                </h2>
-
-                <p>
-                  Important information for
-                  portal users
-                </p>
-              </div>
-            </div>
-
-            <div className="tableWrap">
-              <table>
-                <tbody>
-                  <tr>
-                    <td>
-                      Forecasts and warnings
-                      displayed by SDIP
-                      originate from
-                      MetMalaysia.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Pulse markers represent
-                      active official warning
-                      areas identified from
-                      MetMalaysia text.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      A general Sabah marker
-                      does not represent an
-                      exact incident
-                      coordinate.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      SDIP does not currently
-                      publish fabricated
-                      disaster-risk scores.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Always follow official
-                      safety instructions
-                      from emergency
-                      authorities.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <p
+              style={{
+                margin: "6px 0 0",
+                color: "#9fb0c5",
+                fontSize: "11px",
+                lineHeight: 1.6
+              }}
+            >
+              SDIP is an information
+              portal and does not replace
+              official emergency
+              instructions. Always follow
+              MetMalaysia, NADMA, JPBN
+              Sabah and emergency
+              authorities.
+            </p>
           </section>
         </div>
       </section>
 
       <nav className="mobileNav">
-        <Link href="/">
+        <Link
+          href="/"
+          aria-current="page"
+        >
           Home
         </Link>
 
-        <a href="#map">
-          Map
-        </a>
+        <Link href="/weather">
+          Weather
+        </Link>
 
         <Link href="/alerts">
           Alerts
         </Link>
 
-        <a href="#districts">
-          Districts
+        <a href="#map">
+          Map
         </a>
 
         <a href="#sources">
