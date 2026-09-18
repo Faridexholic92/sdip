@@ -22,10 +22,7 @@ type RecordIngestionRunInput = {
   startedAt: Date;
   completedAt: Date;
 
-  details?: Record<
-    string,
-    unknown
-  >;
+  details?: Record<string, unknown>;
 };
 
 export async function recordIngestionRun({
@@ -45,6 +42,14 @@ export async function recordIngestionRun({
     completedAt.getTime() -
       startedAt.getTime()
   );
+
+  /*
+   * Gunakan JSON.stringify dan cast PostgreSQL.
+   * Ini mengelakkan konflik TypeScript
+   * antara Record<string, unknown> dan JSONValue.
+   */
+  const detailsJson =
+    JSON.stringify(details);
 
   await sql`
     insert into public.ingestion_runs (
@@ -72,7 +77,7 @@ export async function recordIngestionRun({
       ${startedAt},
       ${completedAt},
       ${durationMs},
-      ${sql.json(details)},
+      ${detailsJson}::jsonb,
       now()
     )
   `;
