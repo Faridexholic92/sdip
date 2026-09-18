@@ -28,7 +28,6 @@ type DistrictItem = {
   latitude: number | null;
   longitude: number | null;
   forecast: DistrictForecast;
-  risks?: unknown[];
 };
 
 type DistrictResponse = {
@@ -123,6 +122,144 @@ function formatMalaysiaTime(
       hour: "2-digit",
       minute: "2-digit"
     }
+  );
+}
+
+function getPublicAlertTitle(
+  datatype: string
+) {
+  const normalized =
+    datatype.toUpperCase();
+
+  if (
+    normalized === "WINDSEA" ||
+    normalized === "WINDSEA2"
+  ) {
+    return "AMARAN MARITIM RASMI METMALAYSIA";
+  }
+
+  if (
+    normalized === "THUNDERSTORM" ||
+    normalized === "THUNDERSTORM2"
+  ) {
+    return "AMARAN RIBUT PETIR RASMI METMALAYSIA";
+  }
+
+  if (
+    normalized === "RAIN" ||
+    normalized === "RAIN2"
+  ) {
+    return "AMARAN HUJAN BERTERUSAN RASMI METMALAYSIA";
+  }
+
+  if (
+    normalized === "QUAKETSUNAMI" ||
+    normalized === "QUAKETSUNAMI2"
+  ) {
+    return "MAKLUMAN GEMPA BUMI DAN TSUNAMI RASMI METMALAYSIA";
+  }
+
+  if (
+    normalized === "CYCLONE" ||
+    normalized === "CYCLONE2"
+  ) {
+    return "AMARAN SIKLON TROPIKA RASMI METMALAYSIA";
+  }
+
+  return "AMARAN RASMI METMALAYSIA";
+}
+
+function getPublicAlertSummary(
+  alert: OfficialAlert
+) {
+  const originalText =
+    alert.summary_ms ??
+    alert.warning_ms ??
+    "Maklumat lanjut tidak tersedia.";
+
+  const datatype =
+    alert.datatype.toUpperCase();
+
+  const isMarine =
+    datatype === "WINDSEA" ||
+    datatype === "WINDSEA2";
+
+  if (!isMarine) {
+    return shortenText(
+      originalText
+    );
+  }
+
+  /*
+   * Bulletin maritim MetMalaysia boleh
+   * mengandungi senarai seluruh Malaysia.
+   *
+   * Untuk paparan Sabah, kita ambil ayat
+   * rasmi yang mengandungi perkataan Sabah
+   * dan buang senarai negeri sebelumnya.
+   */
+  const lines = originalText
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const sabahLine = lines.find(
+    (line) =>
+      line
+        .toLowerCase()
+        .includes("sabah")
+  );
+
+  if (!sabahLine) {
+    return shortenText(
+      originalText
+    );
+  }
+
+  const lowerLine =
+    sabahLine.toLowerCase();
+
+  const sabahPosition =
+    lowerLine.indexOf("sabah");
+
+  const locationPhrase =
+    "dijangka di kawasan perairan";
+
+  const locationPhrasePosition =
+    lowerLine.indexOf(
+      locationPhrase
+    );
+
+  if (
+    sabahPosition !== -1 &&
+    locationPhrasePosition !== -1 &&
+    sabahPosition >
+      locationPhrasePosition
+  ) {
+    const prefixEnd =
+      locationPhrasePosition +
+      locationPhrase.length;
+
+    const prefix =
+      sabahLine
+        .slice(0, prefixEnd)
+        .trim();
+
+    const sabahSection =
+      sabahLine
+        .slice(sabahPosition)
+        .trim();
+
+    return shortenText(
+      `${prefix} ${sabahSection}`
+    );
+  }
+
+  return shortenText(
+    sabahLine
   );
 }
 
@@ -267,9 +404,7 @@ function buildForecastPopup(
       <br>
 
       <small>
-        ${escapeHtml(
-          district.locationId
-        )} · OFFICIAL FORECAST
+        RAMALAN CUACA RASMI METMALAYSIA
       </small>
 
       <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
@@ -282,7 +417,16 @@ function buildForecastPopup(
 
       <small>
         Sumber asal: MetMalaysia
+
         <br>
+
+        Lokasi:
+        ${escapeHtml(
+          district.locationId
+        )}
+
+        <br>
+
         Saluran data: SDIP Supabase
       </small>
     </div>
@@ -295,31 +439,33 @@ function buildAlertPopup(
 ) {
   const alertContent = alerts
     .map((alert) => {
-      const summary =
-        alert.summary_ms ??
-        alert.warning_ms ??
-        "Maklumat lanjut tidak tersedia.";
+      const publicTitle =
+        getPublicAlertTitle(
+          alert.datatype
+        );
+
+      const publicSummary =
+        getPublicAlertSummary(
+          alert
+        );
 
       return `
         <div style="margin-top:10px">
           <b>
             ${escapeHtml(
-              alert.heading_ms ??
-                "Amaran MetMalaysia"
+              publicTitle
             )}
           </b>
 
           <br>
 
           <small>
-            ${escapeHtml(
-              alert.datatype
-            )} · OFFICIAL ALERT
+            AMARAN AKTIF · SUMBER RASMI
           </small>
 
-          <p style="font-size:12px;line-height:1.45;white-space:pre-line;margin:7px 0">
+          <p style="font-size:12px;line-height:1.5;white-space:pre-line;margin:8px 0">
             ${escapeHtml(
-              shortenText(summary)
+              publicSummary
             )}
           </p>
 
@@ -365,7 +511,7 @@ function buildAlertPopup(
       <br>
 
       <small>
-        ACTIVE OFFICIAL WARNING
+        KAWASAN AMARAN RASMI
       </small>
 
       ${alertContent}
@@ -388,42 +534,83 @@ function buildAlertPopup(
 function buildGeneralAlertPopup(
   alerts: OfficialAlert[]
 ) {
+  const onlyMarineAlerts =
+    alerts.length > 0 &&
+    alerts.every((alert) => {
+      const datatype =
+        alert.datatype.toUpperCase();
+
+      return (
+        datatype === "WINDSEA" ||
+        datatype === "WINDSEA2"
+      );
+    });
+
+  const popupTitle =
+    onlyMarineAlerts
+      ? "AMARAN MARITIM RASMI METMALAYSIA"
+      : "AMARAN RASMI METMALAYSIA";
+
   const content = alerts
     .map((alert) => {
-      const summary =
-        alert.summary_ms ??
-        alert.warning_ms ??
-        "Maklumat lanjut tidak tersedia.";
+      const publicTitle =
+        getPublicAlertTitle(
+          alert.datatype
+        );
+
+      const publicSummary =
+        getPublicAlertSummary(
+          alert
+        );
 
       return `
         <div style="margin-top:10px">
-          <b>
-            ${escapeHtml(
-              alert.heading_ms ??
-                "Amaran MetMalaysia"
-            )}
-          </b>
+          ${
+            alerts.length > 1
+              ? `
+                <b>
+                  ${escapeHtml(
+                    publicTitle
+                  )}
+                </b>
 
-          <br>
+                <br>
+              `
+              : ""
+          }
 
           <small>
-            ${escapeHtml(
-              alert.datatype
-            )} · OFFICIAL ALERT
+            AMARAN AKTIF · SUMBER RASMI
           </small>
 
-          <p style="font-size:12px;line-height:1.45;white-space:pre-line;margin:7px 0">
+          <p style="font-size:12px;line-height:1.5;white-space:pre-line;margin:8px 0">
             ${escapeHtml(
-              shortenText(summary)
+              publicSummary
             )}
           </p>
 
           <small>
+            Sah dari:
+            ${escapeHtml(
+              formatMalaysiaTime(
+                alert.valid_from
+              )
+            )}
+
+            <br>
+
             Sah hingga:
             ${escapeHtml(
               formatMalaysiaTime(
                 alert.valid_to
               )
+            )}
+
+            <br>
+
+            Sumber:
+            ${escapeHtml(
+              alert.source_name
             )}
           </small>
         </div>
@@ -434,24 +621,20 @@ function buildGeneralAlertPopup(
     `);
 
   return `
-    <div style="min-width:280px;max-width:370px">
+    <div style="min-width:290px;max-width:380px">
       <b>
-        Amaran Umum Sabah
+        ${escapeHtml(
+          popupTitle
+        )}
       </b>
 
       <br>
 
       <small>
-        MARKER NEGERI · BUKAN TITIK KEJADIAN TEPAT
+        PERAIRAN SABAH · MARKER RUJUKAN, BUKAN LOKASI KEJADIAN TEPAT
       </small>
 
       ${content}
-
-      <br>
-
-      <small>
-        Sumber: MetMalaysia
-      </small>
     </div>
   `;
 }
@@ -553,7 +736,6 @@ export default function SabahMap() {
           "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
           {
             maxZoom: 19,
-
             attribution:
               "Labels © Esri"
           }
@@ -580,7 +762,6 @@ export default function SabahMap() {
           "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
           {
             maxZoom: 19,
-
             attribution:
               "© OpenStreetMap contributors"
           }
@@ -682,10 +863,6 @@ export default function SabahMap() {
             )
           : [];
 
-      /*
-       * Forecast marker.
-       * Marker ini boleh diklik.
-       */
       districts.forEach(
         (district) => {
           if (
@@ -694,11 +871,6 @@ export default function SabahMap() {
           ) {
             return;
           }
-
-          const color =
-            getForecastColor(
-              district.forecast
-            );
 
           const marker =
             L.circleMarker(
@@ -710,7 +882,12 @@ export default function SabahMap() {
                 radius: 7,
                 color: "#ffffff",
                 weight: 2,
-                fillColor: color,
+
+                fillColor:
+                  getForecastColor(
+                    district.forecast
+                  ),
+
                 fillOpacity: 0.95,
                 interactive: true,
                 bubblingMouseEvents: false
@@ -742,10 +919,6 @@ export default function SabahMap() {
       const matchedAlertIds =
         new Set<string>();
 
-      /*
-       * Pulse marker bagi daerah
-       * yang dinamakan dalam warning.
-       */
       districts.forEach(
         (district) => {
           if (
@@ -792,11 +965,6 @@ export default function SabahMap() {
             }
           );
 
-          /*
-           * Bulatan ini hanya visual.
-           * interactive:false memastikan
-           * ia tidak menghalang klik.
-           */
           L.circle(
             [
               district.latitude,
@@ -845,11 +1013,6 @@ export default function SabahMap() {
               ]
             });
 
-          /*
-           * Pulse boleh diklik.
-           * Popup pulse turut memaparkan
-           * alert dan forecast daerah.
-           */
           L.marker(
             [
               district.latitude,
@@ -858,7 +1021,10 @@ export default function SabahMap() {
             {
               pane:
                 "warningMarkerPane",
-              icon: pulseIcon,
+
+              icon:
+                pulseIcon,
+
               keyboard: true,
               interactive: true,
               bubblingMouseEvents: false,
@@ -871,7 +1037,7 @@ export default function SabahMap() {
               warningLayer
             )
             .bindTooltip(
-              `Amaran aktif · ${escapeHtml(
+              `Amaran rasmi · ${escapeHtml(
                 district.district
               )}`,
               {
@@ -888,10 +1054,6 @@ export default function SabahMap() {
         }
       );
 
-      /*
-       * Warning umum yang tidak dapat
-       * dipadankan dengan daerah tertentu.
-       */
       const generalAlerts =
         alerts.filter(
           (alert) =>
@@ -946,12 +1108,14 @@ export default function SabahMap() {
             bubblingMouseEvents: false,
 
             title:
-              "Amaran umum Sabah"
+              "Amaran rasmi MetMalaysia"
           }
         )
-          .addTo(warningLayer)
+          .addTo(
+            warningLayer
+          )
           .bindTooltip(
-            "Amaran umum Sabah · bukan titik kejadian tepat",
+            "Amaran rasmi MetMalaysia · marker rujukan",
             {
               direction: "top",
               offset: [0, -20]
@@ -976,10 +1140,10 @@ export default function SabahMap() {
             openStreetMap
         },
         {
-          "Official forecasts":
+          "Ramalan rasmi":
             forecastLayer,
 
-          "Active official warnings":
+          "Amaran rasmi aktif":
             warningLayer
         },
         {
@@ -1015,7 +1179,7 @@ export default function SabahMap() {
       />
 
       <div className="mapBadge">
-        OFFICIAL DATA LAYERS
+        DATA RASMI METMALAYSIA
       </div>
 
       <div className="legend">
@@ -1057,7 +1221,7 @@ export default function SabahMap() {
             className="sdipLegendPulse"
           />
 
-          Amaran aktif
+          Amaran rasmi
         </span>
       </div>
 
@@ -1089,6 +1253,7 @@ export default function SabahMap() {
             rgba(239, 68, 68, 0.9);
           border-radius: 50%;
           pointer-events: none;
+
           animation:
             sdipOfficialAlertPulse
             1.8s ease-out infinite;
@@ -1107,24 +1272,27 @@ export default function SabahMap() {
           border: 3px solid #ffffff;
           border-radius: 50%;
           background: #ef4444;
+
           box-shadow:
             0 0 0 3px
               rgba(239, 68, 68, 0.3),
             0 0 18px
               rgba(239, 68, 68, 0.95);
+
           pointer-events: none;
+
           transform:
             translate(-50%, -50%);
         }
 
         .sdipLegendPulse {
-          position: relative;
           display: inline-block;
           width: 10px !important;
           height: 10px !important;
           border-radius: 50%;
           background:
             #ef4444 !important;
+
           box-shadow:
             0 0 0 4px
               rgba(239, 68, 68, 0.22);
