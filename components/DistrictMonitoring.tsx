@@ -20,23 +20,12 @@ type DistrictForecast = {
   source: string | null;
 };
 
-type DistrictRisk = {
-  id: string;
-  hazardType: string;
-  overallScore: number | null;
-  riskLevel: string;
-  confidenceScore: number | null;
-  dataStatus: string;
-  source: string;
-};
-
 type DistrictItem = {
   locationId: string;
   district: string;
   latitude: number | null;
   longitude: number | null;
   forecast: DistrictForecast;
-  risks: DistrictRisk[];
 };
 
 type DistrictResponse = {
@@ -48,7 +37,7 @@ type DistrictResponse = {
     totalDistrictLocations: number;
     forecastAvailable: number;
     forecastUnavailable: number;
-    districtsWithRisk: number;
+    districtsWithRisk?: number;
   };
 
   districts: DistrictItem[];
@@ -57,9 +46,10 @@ type DistrictResponse = {
 
 type FilterValue =
   | "all"
-  | "forecast"
-  | "unavailable"
-  | "risk";
+  | "thunderstorm"
+  | "rain"
+  | "no-rain"
+  | "unavailable";
 
 function formatMalaysiaTime(
   timestamp: string | null
@@ -91,13 +81,7 @@ function getWeatherColor(
       "ribut petir"
     )
   ) {
-    return "#ef4444";
-  }
-
-  if (
-    normalized.includes("hujan")
-  ) {
-    return "#38bdf8";
+    return "#f59e0b";
   }
 
   if (
@@ -108,34 +92,61 @@ function getWeatherColor(
     return "#22c55e";
   }
 
+  if (
+    normalized.includes("hujan")
+  ) {
+    return "#38bdf8";
+  }
+
   return "#94a3b8";
 }
 
-function getRiskColor(
-  riskLevel: string
+function matchesWeatherFilter(
+  district: DistrictItem,
+  filter: FilterValue
 ) {
-  const normalized =
-    riskLevel.toUpperCase();
-
-  if (
-    normalized === "CRITICAL" ||
-    normalized === "EXTREME"
-  ) {
-    return "#dc2626";
+  if (filter === "all") {
+    return true;
   }
 
-  if (normalized === "HIGH") {
-    return "#f97316";
+  if (filter === "unavailable") {
+    return !district.forecast.available;
   }
 
-  if (
-    normalized === "MODERATE" ||
-    normalized === "MEDIUM"
-  ) {
-    return "#eab308";
+  if (!district.forecast.available) {
+    return false;
   }
 
-  return "#22c55e";
+  const weather =
+    district.forecast
+      .significantWeather
+      ?.toLowerCase() ?? "";
+
+  if (filter === "thunderstorm") {
+    return weather.includes(
+      "ribut petir"
+    );
+  }
+
+  if (filter === "no-rain") {
+    return weather.includes(
+      "tiada hujan"
+    );
+  }
+
+  if (filter === "rain") {
+    return (
+      weather.includes("hujan") &&
+      !weather.includes(
+        "ribut petir"
+      ) &&
+      !weather.includes(
+        "tiada hujan"
+      )
+    );
+  }
+
+  return true;
 }
 
 export default function DistrictMonitoring() {
@@ -194,7 +205,7 @@ export default function DistrictMonitoring() {
         );
 
         setError(
-          "Data pemantauan daerah tidak dapat dimuatkan."
+          "Data pemantauan lokasi tidak dapat dimuatkan."
         );
       } finally {
         setLoading(false);
@@ -239,31 +250,13 @@ export default function DistrictMonitoring() {
                 normalizedSearch
               );
 
-          if (!matchesSearch) {
-            return false;
-          }
-
-          if (
-            filter === "forecast"
-          ) {
-            return district
-              .forecast.available;
-          }
-
-          if (
-            filter === "unavailable"
-          ) {
-            return !district
-              .forecast.available;
-          }
-
-          if (filter === "risk") {
-            return (
-              district.risks.length > 0
-            );
-          }
-
-          return true;
+          return (
+            matchesSearch &&
+            matchesWeatherFilter(
+              district,
+              filter
+            )
+          );
         }
       );
     }, [
@@ -277,21 +270,26 @@ export default function DistrictMonitoring() {
       <div className="panelHead">
         <div>
           <h2>
-            District Monitoring
+            District Weather Monitoring
           </h2>
 
           <p>
-            Ramalan rasmi MetMalaysia dan
-            penilaian risiko SDIP
+            Ramalan cuaca rasmi
+            MetMalaysia untuk lokasi Sabah
           </p>
         </div>
 
         {data && (
           <small>
-            {data.summary
-              .forecastAvailable}
-            /{data.summary
-              .totalDistrictLocations}
+            {
+              data.summary
+                .forecastAvailable
+            }
+            /
+            {
+              data.summary
+                .totalDistrictLocations
+            }
             {" lokasi tersedia"}
           </small>
         )}
@@ -301,15 +299,15 @@ export default function DistrictMonitoring() {
         style={{
           display: "grid",
           gridTemplateColumns:
-            "minmax(180px, 1fr) minmax(170px, 220px)",
+            "minmax(180px, 1fr) minmax(190px, 240px)",
           gap: "10px",
-          padding: "0 16px 16px"
+          padding: "16px"
         }}
       >
         <input
           type="search"
-          aria-label="Cari daerah"
-          placeholder="Cari daerah Sabah…"
+          aria-label="Cari lokasi Sabah"
+          placeholder="Cari lokasi Sabah…"
           value={search}
           onChange={(event) => {
             setSearch(
@@ -318,10 +316,11 @@ export default function DistrictMonitoring() {
           }}
           style={{
             width: "100%",
-            borderRadius: "8px",
+            padding: "10px 12px",
             border:
               "1px solid rgba(148,163,184,0.25)",
-            padding: "10px 12px",
+            borderRadius: "8px",
+            outline: "none",
             background: "#0f172a",
             color: "#f8fafc",
             font: "inherit"
@@ -329,7 +328,7 @@ export default function DistrictMonitoring() {
         />
 
         <select
-          aria-label="Tapis daerah"
+          aria-label="Tapis keadaan cuaca"
           value={filter}
           onChange={(event) => {
             setFilter(
@@ -339,10 +338,10 @@ export default function DistrictMonitoring() {
           }}
           style={{
             width: "100%",
-            borderRadius: "8px",
+            padding: "10px 12px",
             border:
               "1px solid rgba(148,163,184,0.25)",
-            padding: "10px 12px",
+            borderRadius: "8px",
             background: "#0f172a",
             color: "#f8fafc",
             font: "inherit"
@@ -352,16 +351,20 @@ export default function DistrictMonitoring() {
             Semua lokasi
           </option>
 
-          <option value="forecast">
-            Forecast tersedia
+          <option value="thunderstorm">
+            Ribut petir
+          </option>
+
+          <option value="rain">
+            Hujan
+          </option>
+
+          <option value="no-rain">
+            Tiada hujan
           </option>
 
           <option value="unavailable">
-            Forecast tidak tersedia
-          </option>
-
-          <option value="risk">
-            Mempunyai risiko
+            Data belum tersedia
           </option>
         </select>
       </div>
@@ -372,7 +375,7 @@ export default function DistrictMonitoring() {
             padding: "18px"
           }}
         >
-          Memuatkan pemantauan daerah…
+          Memuatkan pemantauan cuaca…
         </div>
       )}
 
@@ -395,175 +398,194 @@ export default function DistrictMonitoring() {
               <table>
                 <thead>
                   <tr>
-                    <th>Daerah/Lokasi</th>
-                    <th>Cuaca Signifikan</th>
-                    <th>Suhu</th>
-                    <th>Pagi</th>
-                    <th>Petang</th>
-                    <th>Malam</th>
-                    <th>Risiko</th>
-                    <th>Kemas Kini</th>
+                    <th>
+                      Lokasi
+                    </th>
+
+                    <th>
+                      Cuaca Signifikan
+                    </th>
+
+                    <th>
+                      Suhu
+                    </th>
+
+                    <th>
+                      Pagi
+                    </th>
+
+                    <th>
+                      Petang
+                    </th>
+
+                    <th>
+                      Malam
+                    </th>
+
+                    <th>
+                      Status Data
+                    </th>
+
+                    <th>
+                      Kemas Kini
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {filteredDistricts.map(
-                    (district) => {
-                      const risk =
-                        district.risks[0];
+                    (district) => (
+                      <tr
+                        key={
+                          district.locationId
+                        }
+                      >
+                        <td>
+                          <b>
+                            {district.district}
+                          </b>
 
-                      return (
-                        <tr
-                          key={
-                            district.locationId
-                          }
-                        >
-                          <td>
-                            <b>
-                              {district.district}
-                            </b>
+                          <br />
 
-                            <br />
+                          <small>
+                            {
+                              district.locationId
+                            }
+                          </small>
+                        </td>
 
-                            <small>
-                              {
-                                district.locationId
-                              }
-                            </small>
-                          </td>
-
-                          <td>
-                            {district.forecast
-                              .available ? (
-                              <span
+                        <td>
+                          {district.forecast
+                            .available ? (
+                            <span
+                              style={{
+                                display:
+                                  "inline-flex",
+                                alignItems:
+                                  "center",
+                                gap: "7px"
+                              }}
+                            >
+                              <i
                                 style={{
-                                  display:
-                                    "inline-flex",
-                                  alignItems:
-                                    "center",
-                                  gap: "7px"
+                                  width:
+                                    "8px",
+                                  height:
+                                    "8px",
+                                  flex:
+                                    "0 0 auto",
+                                  borderRadius:
+                                    "50%",
+                                  background:
+                                    getWeatherColor(
+                                      district
+                                        .forecast
+                                        .significantWeather
+                                    )
                                 }}
-                              >
-                                <i
-                                  style={{
-                                    width:
-                                      "8px",
-                                    height:
-                                      "8px",
-                                    borderRadius:
-                                      "50%",
-                                    background:
-                                      getWeatherColor(
-                                        district
-                                          .forecast
-                                          .significantWeather
-                                      ),
-                                    flex:
-                                      "0 0 auto"
-                                  }}
-                                />
+                              />
 
-                                {district
-                                  .forecast
-                                  .significantWeather ??
-                                  "Tidak dinyatakan"}
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  color:
-                                    "#94a3b8"
-                                }}
-                              >
-                                Belum tersedia
-                              </span>
-                            )}
-                          </td>
+                              {district
+                                .forecast
+                                .significantWeather ??
+                                "Tidak dinyatakan"}
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                color:
+                                  "#94a3b8"
+                              }}
+                            >
+                              Belum tersedia
+                            </span>
+                          )}
+                        </td>
 
-                          <td>
-                            {district.forecast
-                              .minimumTemperature !==
-                              null &&
+                        <td>
+                          {district.forecast
+                            .minimumTemperature !==
+                            null &&
+                          district.forecast
+                            .maximumTemperature !==
+                            null
+                            ? `${district.forecast.minimumTemperature}°C–${district.forecast.maximumTemperature}°C`
+                            : "—"}
+                        </td>
+
+                        <td>
+                          {district.forecast
+                            .morning ??
+                            "—"}
+                        </td>
+
+                        <td>
+                          {district.forecast
+                            .afternoon ??
+                            "—"}
+                        </td>
+
+                        <td>
+                          {district.forecast
+                            .night ??
+                            "—"}
+                        </td>
+
+                        <td>
+                          {district.forecast
+                            .available ? (
+                            <span
+                              style={{
+                                display:
+                                  "inline-block",
+                                padding:
+                                  "4px 8px",
+                                borderRadius:
+                                  "999px",
+                                background:
+                                  "rgba(34,197,94,0.14)",
+                                color:
+                                  "#86efac",
+                                fontSize:
+                                  "0.7rem",
+                                fontWeight:
+                                  700
+                              }}
+                            >
+                              RASMI
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display:
+                                  "inline-block",
+                                padding:
+                                  "4px 8px",
+                                borderRadius:
+                                  "999px",
+                                background:
+                                  "rgba(148,163,184,0.12)",
+                                color:
+                                  "#94a3b8",
+                                fontSize:
+                                  "0.7rem",
+                                fontWeight:
+                                  700
+                              }}
+                            >
+                              TIADA DATA
+                            </span>
+                          )}
+                        </td>
+
+                        <td>
+                          {formatMalaysiaTime(
                             district.forecast
-                              .maximumTemperature !==
-                              null
-                              ? `${district.forecast.minimumTemperature}°C–${district.forecast.maximumTemperature}°C`
-                              : "—"}
-                          </td>
-
-                          <td>
-                            {district.forecast
-                              .morning ??
-                              "—"}
-                          </td>
-
-                          <td>
-                            {district.forecast
-                              .afternoon ??
-                              "—"}
-                          </td>
-
-                          <td>
-                            {district.forecast
-                              .night ??
-                              "—"}
-                          </td>
-
-                          <td>
-                            {risk ? (
-                              <>
-                                <span
-                                  style={{
-                                    display:
-                                      "inline-block",
-                                    borderRadius:
-                                      "999px",
-                                    padding:
-                                      "4px 8px",
-                                    background:
-                                      getRiskColor(
-                                        risk.riskLevel
-                                      ),
-                                    color:
-                                      "#ffffff",
-                                    fontSize:
-                                      "0.7rem",
-                                    fontWeight:
-                                      700
-                                  }}
-                                >
-                                  {
-                                    risk.riskLevel
-                                  }
-                                </span>
-
-                                <br />
-
-                                <small>
-                                  {
-                                    risk.hazardType
-                                  }
-                                  {" · "}
-                                  {
-                                    risk.overallScore
-                                  }
-                                  {" · SIMULATED"}
-                                </small>
-                              </>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-
-                          <td>
-                            {formatMalaysiaTime(
-                              district.forecast
-                                .lastUpdated
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    }
+                              .lastUpdated
+                          )}
+                        </td>
+                      </tr>
+                    )
                   )}
 
                   {filteredDistricts
@@ -572,15 +594,15 @@ export default function DistrictMonitoring() {
                       <td
                         colSpan={8}
                         style={{
-                          textAlign:
-                            "center",
                           padding:
-                            "24px"
+                            "24px",
+                          textAlign:
+                            "center"
                         }}
                       >
-                        Tiada lokasi sepadan
-                        dengan carian atau
-                        penapis.
+                        Tiada lokasi
+                        sepadan dengan
+                        carian atau penapis.
                       </td>
                     </tr>
                   )}
@@ -590,26 +612,26 @@ export default function DistrictMonitoring() {
 
             <div
               style={{
-                padding: "12px 16px",
+                padding:
+                  "12px 16px",
                 borderTop:
                   "1px solid rgba(148,163,184,0.15)"
               }}
             >
               <small>
                 Menunjukkan{" "}
-                {filteredDistricts.length}
+                {
+                  filteredDistricts.length
+                }
                 {" daripada "}
                 {
                   data.summary
                     .totalDistrictLocations
                 }
                 {" lokasi · "}
-                Sumber cuaca: MetMalaysia
+                Sumber: MetMalaysia
                 {" · "}
-                Risiko bertanda SIMULATED
-                bukan amaran rasmi
-                {" · "}
-                Data API:{" "}
+                Dikemas kini:{" "}
                 {formatMalaysiaTime(
                   data.retrievedAt
                 )}
