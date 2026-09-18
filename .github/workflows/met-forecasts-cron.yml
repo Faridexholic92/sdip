@@ -1,17 +1,13 @@
 name: MetMalaysia Sabah Forecast Ingestion
 
 on:
-  schedule:
-    # Setiap jam pada minit ke-5
-    - cron: "5 * * * *"
-
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: met-forecasts-cron
+  group: met-forecasts-manual
   cancel-in-progress: false
 
 jobs:
@@ -21,7 +17,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Call forecast batches
+      - name: Call protected SDIP forecast batches
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           CRON_ENDPOINT: https://sdip-blue.vercel.app/api/cron/met-forecasts
