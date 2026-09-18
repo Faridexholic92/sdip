@@ -3,26 +3,19 @@ import { sql } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const TOTAL_SABAH_LOCATIONS = 32;
 
-type AlertCountRow = {
+type OverviewRow = {
   active_alerts: string | number;
-};
-
-type ForecastCountRow = {
   available_locations: string | number;
   forecast_records: string | number;
   latest_forecast_update: string | null;
-};
-
-type RiskCountRow = {
   simulated_notices: string | number;
   elevated_areas: string | number;
-};
-
-type LatestAlertRow = {
   latest_alert_update: string | null;
+  last_data_update: string | null;
 };
 
 function getMalaysiaDate() {
@@ -51,46 +44,25 @@ function getMalaysiaDate() {
   return `${year}-${month}-${day}`;
 }
 
-function latestTimestamp(
-  timestamps: Array<string | null>
-) {
-  const validTimestamps = timestamps
-    .filter(
-      (timestamp): timestamp is string =>
-        Boolean(timestamp)
-    )
-    .map((timestamp) => ({
-      timestamp,
-      milliseconds:
-        new Date(timestamp).getTime()
-    }))
-    .filter((item) =>
-      Number.isFinite(item.milliseconds)
-    )
-    .sort(
-      (a, b) =>
-        b.milliseconds -
-        a.milliseconds
-    );
-
-  return validTimestamps[0]?.timestamp ?? null;
-}
-
 export async function GET() {
   const today = getMalaysiaDate();
 
   try {
-    const [
-      alertRows,
-      forecastRows,
-      riskRows,
-      latestAlertRows
-    ] = await Promise.all([
-      sql<AlertCountRow[]>`
+    /*
+     * Satu panggilan SQL sahaja.
+     * Ini mengelakkan beberapa query berebut
+     * satu sambungan serverless PostgreSQL.
+     */
+    const rows = await sql<OverviewRow[]>`
+      with alert_stats as (
         select
           count(
             distinct datatype
-          ) as active_alerts
+          ) as active_alerts,
+
+          max(
+            last_seen_at
+          ) as latest_alert_update
         from public.official_alerts
         where
           affects_sabah = true
@@ -99,9 +71,9 @@ export async function GET() {
             valid_to is null
             or valid_to >= now()
           )
-      `,
+      ),
 
-      sql<ForecastCountRow[]>`
+      forecast_stats as (
         select
           count(
             distinct location_id
@@ -115,21 +87,30 @@ export async function GET() {
         from public.official_forecasts
         where
           forecast_date = ${today}
-      `,
+      ),
 
-      sql<RiskCountRow[]>`
+      risk_stats as (
         select
           count(*) filter (
             where
-              lower(data_status) =
-              'simulated'
+              lower(
+                coalesce(
+                  data_status,
+                  ''
+                )
+              ) = 'simulated'
           ) as simulated_notices,
 
           count(
             distinct district
           ) filter (
             where
-              upper(risk_level) in (
+              upper(
+                coalesce(
+                  risk_level,
+                  ''
+                )
+              ) in (
                 'HIGH',
                 'VERY HIGH',
                 'VERY_HIGH',
@@ -138,39 +119,50 @@ export async function GET() {
               )
           ) as elevated_areas
         from public.risk_assessments
-      `,
+      )
 
-      sql<LatestAlertRow[]>`
-        select
-          max(
-            last_seen_at
-          ) as latest_alert_update
-        from public.official_alerts
-      `
-    ]);
+      select
+        alert_stats.active_alerts,
+
+        forecast_stats.available_locations,
+        forecast_stats.forecast_records,
+        forecast_stats.latest_forecast_update,
+
+        risk_stats.simulated_notices,
+        risk_stats.elevated_areas,
+
+        alert_stats.latest_alert_update,
+
+        greatest(
+          alert_stats.latest_alert_update,
+          forecast_stats.latest_forecast_update
+        ) as last_data_update
+
+      from alert_stats
+      cross join forecast_stats
+      cross join risk_stats
+    `;
+
+    const row = rows[0];
 
     const activeAlerts = Number(
-      alertRows[0]?.active_alerts ?? 0
+      row?.active_alerts ?? 0
     );
 
     const availableLocations = Number(
-      forecastRows[0]
-        ?.available_locations ?? 0
+      row?.available_locations ?? 0
     );
 
     const forecastRecords = Number(
-      forecastRows[0]
-        ?.forecast_records ?? 0
+      row?.forecast_records ?? 0
     );
 
     const simulatedNotices = Number(
-      riskRows[0]
-        ?.simulated_notices ?? 0
+      row?.simulated_notices ?? 0
     );
 
     const elevatedAreas = Number(
-      riskRows[0]
-        ?.elevated_areas ?? 0
+      row?.elevated_areas ?? 0
     );
 
     const forecastCoverage =
@@ -183,20 +175,10 @@ export async function GET() {
           )
         : 0;
 
-    const lastDataUpdate =
-      latestTimestamp([
-        forecastRows[0]
-          ?.latest_forecast_update ?? null,
-
-        latestAlertRows[0]
-          ?.latest_alert_update ?? null
-      ]);
-
     return NextResponse.json(
       {
         status: "success",
         source: "SDIP Supabase",
-
         date: today,
 
         overview: {
@@ -213,7 +195,14 @@ export async function GET() {
             forecastRecords
           },
 
-          lastDataUpdate
+          lastDataUpdate:
+            row?.last_data_update ?? null,
+
+          latestAlertUpdate:
+            row?.latest_alert_update ?? null,
+
+          latestForecastUpdate:
+            row?.latest_forecast_update ?? null
         },
 
         retrievedAt:
