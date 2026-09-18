@@ -6,23 +6,35 @@ import {
 } from "react";
 
 import {
-  SABAH_MET_LOCATIONS,
-  type SabahMetLocation
+  SABAH_MET_LOCATIONS
 } from "@/lib/metMalaysiaLocations";
 
-type ForecastResult = {
-  datatype: string;
-  value: string | number | null;
+type DistrictForecast = {
+  available: boolean;
+  date: string;
+  morning: string | null;
+  afternoon: string | null;
+  night: string | null;
+  significantWeather: string | null;
+  minimumTemperature: number | null;
+  maximumTemperature: number | null;
+  lastUpdated: string | null;
+  source: string | null;
 };
 
-type ForecastResponse = {
-  status: string;
-  source: string;
-  retrievedAt: string;
+type DistrictItem = {
+  locationId: string;
+  district: string;
+  latitude: number | null;
+  longitude: number | null;
+  forecast: DistrictForecast;
+};
 
-  data?: {
-    results?: ForecastResult[];
-  };
+type DistrictResponse = {
+  status: string;
+  date: string;
+  districts: DistrictItem[];
+  retrievedAt: string;
 };
 
 type OfficialAlert = {
@@ -38,17 +50,8 @@ type OfficialAlert = {
 
 type AlertsResponse = {
   status: string;
-  alerts?: OfficialAlert[];
-};
-
-type RiskRow = {
-  id?: string;
-  district?: string;
-  hazard_type?: string;
-  overall_score?: number | string;
-  risk_level?: string;
-  confidence_score?: number | string;
-  data_status?: string;
+  alerts: OfficialAlert[];
+  retrievedAt: string;
 };
 
 const SABAH_CENTER: [
@@ -58,18 +61,6 @@ const SABAH_CENTER: [
   5.55,
   117.25
 ];
-
-const riskColors: Record<
-  string,
-  string
-> = {
-  LOW: "#72bc8f",
-  MODERATE: "#eac26b",
-  MEDIUM: "#eac26b",
-  HIGH: "#de9255",
-  CRITICAL: "#e97366",
-  EXTREME: "#dc2626"
-};
 
 function escapeHtml(
   value: unknown
@@ -92,8 +83,30 @@ function normalizeText(
     .trim();
 }
 
+function shortenText(
+  value: string,
+  maximumLength = 550
+) {
+  const cleaned = value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (
+    cleaned.length <= maximumLength
+  ) {
+    return cleaned;
+  }
+
+  return `${cleaned.slice(
+    0,
+    maximumLength
+  )}…`;
+}
+
 function formatMalaysiaTime(
-  timestamp: string | null | undefined
+  timestamp: string | null
 ) {
   if (!timestamp) {
     return "Tidak dinyatakan";
@@ -112,47 +125,77 @@ function formatMalaysiaTime(
   );
 }
 
-function getForecastValue(
-  results: ForecastResult[],
-  datatype: string
+function getForecastColor(
+  forecast: DistrictForecast
 ) {
-  const result = results.find(
-    (item) =>
-      item.datatype === datatype
-  );
-
-  if (
-    result?.value === null ||
-    result?.value === undefined
-  ) {
-    return "—";
+  if (!forecast.available) {
+    return "#94a3b8";
   }
 
-  return String(result.value);
+  const weather =
+    forecast.significantWeather
+      ?.toLowerCase() ?? "";
+
+  if (
+    weather.includes(
+      "ribut petir"
+    )
+  ) {
+    return "#f59e0b";
+  }
+
+  if (
+    weather.includes("hujan")
+  ) {
+    return "#38bdf8";
+  }
+
+  if (
+    weather.includes(
+      "tiada hujan"
+    )
+  ) {
+    return "#22c55e";
+  }
+
+  return "#38bdf8";
 }
 
 function buildForecastPopup(
-  location: SabahMetLocation,
-  response: ForecastResponse
+  district: DistrictItem
 ) {
-  const results =
-    response.data?.results ?? [];
+  const forecast =
+    district.forecast;
 
-  if (results.length === 0) {
+  if (!forecast.available) {
     return `
-      <div style="min-width:220px">
-        <b>${escapeHtml(location.name)}</b>
+      <div style="min-width:230px">
+        <b>${escapeHtml(
+          district.district
+        )}</b>
+
         <br>
+
         <small>
-          ${escapeHtml(location.id)}
+          ${escapeHtml(
+            district.locationId
+          )}
         </small>
+
         <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
-        <b>Ramalan belum tersedia</b>
+
+        <b>
+          Ramalan belum tersedia
+        </b>
+
         <br>
+
         <small>
-          MetMalaysia tidak memulangkan ramalan GENERAL untuk lokasi ini pada tarikh semasa.
+          MetMalaysia tidak memulangkan ramalan GENERAL bagi lokasi ini pada tarikh semasa.
         </small>
+
         <br><br>
+
         <small>
           Sumber: MetMalaysia via SDIP Supabase
         </small>
@@ -160,81 +203,78 @@ function buildForecastPopup(
     `;
   }
 
-  const significant =
-    getForecastValue(
-      results,
-      "FSIGW"
-    );
-
-  const morning =
-    getForecastValue(
-      results,
-      "FGM"
-    );
-
-  const afternoon =
-    getForecastValue(
-      results,
-      "FGA"
-    );
-
-  const night =
-    getForecastValue(
-      results,
-      "FGN"
-    );
-
-  const minimum =
-    getForecastValue(
-      results,
-      "FMINT"
-    );
-
-  const maximum =
-    getForecastValue(
-      results,
-      "FMAXT"
-    );
-
   return `
-    <div style="min-width:240px">
-      <b>${escapeHtml(location.name)}</b>
+    <div style="min-width:250px">
+      <b>${escapeHtml(
+        district.district
+      )}</b>
+
       <br>
+
       <small>
-        ${escapeHtml(location.id)} · OFFICIAL FORECAST
+        ${escapeHtml(
+          district.locationId
+        )} · OFFICIAL FORECAST
       </small>
 
       <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
 
-      <b>${escapeHtml(significant)}</b>
+      <b>
+        ${escapeHtml(
+          forecast.significantWeather ??
+            "Tiada cuaca signifikan dinyatakan"
+        )}
+      </b>
 
       <table style="width:100%;margin-top:8px;font-size:12px">
         <tr>
           <td>Pagi</td>
+
           <td style="text-align:right">
-            <b>${escapeHtml(morning)}</b>
+            <b>
+              ${escapeHtml(
+                forecast.morning ?? "—"
+              )}
+            </b>
           </td>
         </tr>
 
         <tr>
           <td>Petang</td>
+
           <td style="text-align:right">
-            <b>${escapeHtml(afternoon)}</b>
+            <b>
+              ${escapeHtml(
+                forecast.afternoon ?? "—"
+              )}
+            </b>
           </td>
         </tr>
 
         <tr>
           <td>Malam</td>
+
           <td style="text-align:right">
-            <b>${escapeHtml(night)}</b>
+            <b>
+              ${escapeHtml(
+                forecast.night ?? "—"
+              )}
+            </b>
           </td>
         </tr>
 
         <tr>
           <td>Suhu</td>
+
           <td style="text-align:right">
             <b>
-              ${escapeHtml(minimum)}°C–${escapeHtml(maximum)}°C
+              ${escapeHtml(
+                forecast.minimumTemperature ??
+                  "—"
+              )}°C–${escapeHtml(
+                forecast.maximumTemperature ??
+                  "—"
+              )}°C
             </b>
           </td>
         </tr>
@@ -244,10 +284,13 @@ function buildForecastPopup(
 
       <small>
         Sumber asal: MetMalaysia
+
         <br>
-        Data disimpan: ${escapeHtml(
+
+        Dikemas kini:
+        ${escapeHtml(
           formatMalaysiaTime(
-            response.retrievedAt
+            forecast.lastUpdated
           )
         )}
       </small>
@@ -255,44 +298,203 @@ function buildForecastPopup(
   `;
 }
 
-function extractRiskRows(
-  payload: unknown
-): RiskRow[] {
-  const source =
-    payload as Record<
-      string,
-      unknown
-    >;
+function buildAlertPopup(
+  districtName: string,
+  alerts: OfficialAlert[]
+) {
+  const alertContent = alerts
+    .map((alert) => {
+      const summary =
+        alert.summary_ms ??
+        alert.warning_ms ??
+        "Maklumat lanjut tidak tersedia.";
 
-  const candidates = [
-    source.data,
-    source.risks,
-    source.results,
-    (
-      source.data as
-        | Record<string, unknown>
-        | undefined
-    )?.rows
-  ];
+      return `
+        <div style="margin-top:10px">
+          <b>
+            ${escapeHtml(
+              alert.heading_ms ??
+                "Amaran MetMalaysia"
+            )}
+          </b>
 
-  const rows =
-    candidates.find(
-      Array.isArray
-    );
+          <br>
 
-  return Array.isArray(rows)
-    ? (rows as RiskRow[])
-    : [];
+          <small>
+            ${escapeHtml(
+              alert.datatype
+            )} · OFFICIAL ALERT
+          </small>
+
+          <p style="font-size:12px;line-height:1.45;white-space:pre-line;margin:7px 0">
+            ${escapeHtml(
+              shortenText(summary)
+            )}
+          </p>
+
+          <small>
+            Sah dari:
+            ${escapeHtml(
+              formatMalaysiaTime(
+                alert.valid_from
+              )
+            )}
+
+            <br>
+
+            Sah hingga:
+            ${escapeHtml(
+              formatMalaysiaTime(
+                alert.valid_to
+              )
+            )}
+
+            <br>
+
+            Sumber:
+            ${escapeHtml(
+              alert.source_name
+            )}
+          </small>
+        </div>
+      `;
+    })
+    .join(`
+      <hr style="border:0;border-top:1px solid #ddd;margin:10px 0">
+    `);
+
+  return `
+    <div style="min-width:270px;max-width:360px">
+      <b>
+        ${escapeHtml(
+          districtName
+        )}
+      </b>
+
+      <br>
+
+      <small>
+        ACTIVE OFFICIAL WARNING
+      </small>
+
+      ${alertContent}
+    </div>
+  `;
 }
 
-function getRiskColor(
-  level: string
+function buildGeneralAlertPopup(
+  alerts: OfficialAlert[]
 ) {
-  return (
-    riskColors[
-      level.toUpperCase()
-    ] ?? "#eac26b"
+  const content = alerts
+    .map((alert) => {
+      const summary =
+        alert.summary_ms ??
+        alert.warning_ms ??
+        "Maklumat lanjut tidak tersedia.";
+
+      return `
+        <div style="margin-top:10px">
+          <b>
+            ${escapeHtml(
+              alert.heading_ms ??
+                "Amaran MetMalaysia"
+            )}
+          </b>
+
+          <br>
+
+          <small>
+            ${escapeHtml(
+              alert.datatype
+            )}
+          </small>
+
+          <p style="font-size:12px;line-height:1.45;white-space:pre-line;margin:7px 0">
+            ${escapeHtml(
+              shortenText(summary)
+            )}
+          </p>
+
+          <small>
+            Sah hingga:
+            ${escapeHtml(
+              formatMalaysiaTime(
+                alert.valid_to
+              )
+            )}
+          </small>
+        </div>
+      `;
+    })
+    .join(`
+      <hr style="border:0;border-top:1px solid #ddd;margin:10px 0">
+    `);
+
+  return `
+    <div style="min-width:280px;max-width:370px">
+      <b>
+        Amaran Umum Sabah
+      </b>
+
+      <br>
+
+      <small>
+        MARKER NEGERI · BUKAN TITIK KEJADIAN TEPAT
+      </small>
+
+      ${content}
+
+      <br>
+
+      <small>
+        Sumber: MetMalaysia
+      </small>
+    </div>
+  `;
+}
+
+function createFallbackDistricts():
+  DistrictItem[] {
+  return SABAH_MET_LOCATIONS.map(
+    (location) => ({
+      locationId: location.id,
+      district: location.name,
+      latitude: location.latitude,
+      longitude: location.longitude,
+
+      forecast: {
+        available: false,
+        date: "",
+        morning: null,
+        afternoon: null,
+        night: null,
+        significantWeather: null,
+        minimumTemperature: null,
+        maximumTemperature: null,
+        lastUpdated: null,
+        source: null
+      }
+    })
   );
+}
+
+function isAlertActive(
+  alert: OfficialAlert
+) {
+  if (!alert.valid_to) {
+    return true;
+  }
+
+  const validTo =
+    new Date(
+      alert.valid_to
+    ).getTime();
+
+  if (!Number.isFinite(validTo)) {
+    return true;
+  }
+
+  return validTo >= Date.now();
 }
 
 export default function SabahMap() {
@@ -302,9 +504,6 @@ export default function SabahMap() {
   useEffect(() => {
     let map: any;
     let cancelled = false;
-
-    const forecastPopupCache =
-      new Map<string, string>();
 
     async function initializeMap() {
       if (!node.current) {
@@ -327,7 +526,7 @@ export default function SabahMap() {
         node.current,
         {
           minZoom: 6,
-          maxZoom: 14,
+          maxZoom: 18,
           zoomControl: true
         }
       ).setView(
@@ -335,201 +534,106 @@ export default function SabahMap() {
         7
       );
 
-      const tiles =
-        process.env
-          .NEXT_PUBLIC_MAP_TILE_URL ||
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      /*
+       * Esri Satellite dengan label
+       * menjadi basemap utama.
+       */
+      const esriImageryTiles =
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 19,
 
-      L.tileLayer(
-        tiles,
-        {
-          maxZoom: 19,
-          attribution:
-            "© OpenStreetMap contributors"
-        }
-      ).addTo(map);
+            attribution:
+              "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+          }
+        );
+
+      const esriPlaceLabels =
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 19,
+
+            attribution:
+              "Labels © Esri"
+          }
+        );
+
+      const esriSatellite =
+        L.layerGroup([
+          esriImageryTiles,
+          esriPlaceLabels
+        ]);
+
+      const esriTopographic =
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 19,
+            attribution:
+              "Tiles © Esri"
+          }
+        );
+
+      const openStreetMap =
+        L.tileLayer(
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {
+            maxZoom: 19,
+
+            attribution:
+              "© OpenStreetMap contributors"
+          }
+        );
+
+      esriSatellite.addTo(map);
 
       map.createPane(
-        "riskPane"
+        "warningAreaPane"
       );
 
       map.getPane(
-        "riskPane"
-      ).style.zIndex = "410";
+        "warningAreaPane"
+      ).style.zIndex = "430";
 
       map.createPane(
-        "warningPane"
+        "warningMarkerPane"
       );
 
       map.getPane(
-        "warningPane"
-      ).style.zIndex = "420";
+        "warningMarkerPane"
+      ).style.zIndex = "650";
 
-      const locationLayer =
+      const forecastLayer =
         L.layerGroup().addTo(map);
 
       const warningLayer =
         L.layerGroup().addTo(map);
 
-      const riskLayer =
-        L.layerGroup().addTo(map);
-
-      /*
-       * Lokasi forecast rasmi.
-       * Data forecast hanya dimuatkan
-       * apabila marker diklik.
-       */
-      SABAH_MET_LOCATIONS.forEach(
-        (location) => {
-          if (
-            location.latitude === null ||
-            location.longitude === null
-          ) {
-            return;
-          }
-
-          const marker =
-            L.circleMarker(
-              [
-                location.latitude,
-                location.longitude
-              ],
-              {
-                radius: 6,
-                color: "#ffffff",
-                weight: 2,
-                fillColor: "#38bdf8",
-                fillOpacity: 0.95
-              }
-            ).addTo(
-              locationLayer
-            );
-
-          marker.bindTooltip(
-            escapeHtml(
-              location.name
-            ),
-            {
-              direction: "top",
-              offset: [0, -5]
-            }
-          );
-
-          marker.bindPopup(`
-            <div style="min-width:200px">
-              <b>${escapeHtml(location.name)}</b>
-              <br>
-              <small>
-                ${escapeHtml(location.id)} · METMALAYSIA
-              </small>
-              <br><br>
-              Memuatkan ramalan rasmi…
-            </div>
-          `);
-
-          marker.on(
-            "click",
-            async () => {
-              const cachedPopup =
-                forecastPopupCache.get(
-                  location.id
-                );
-
-              if (cachedPopup) {
-                marker
-                  .setPopupContent(
-                    cachedPopup
-                  )
-                  .openPopup();
-
-                return;
-              }
-
-              marker
-                .setPopupContent(`
-                  <div style="min-width:200px">
-                    <b>${escapeHtml(location.name)}</b>
-                    <br><br>
-                    Memuatkan ramalan rasmi…
-                  </div>
-                `)
-                .openPopup();
-
-              try {
-                const params =
-                  new URLSearchParams({
-                    locationid:
-                      location.id
-                  });
-
-                const response =
-                  await fetch(
-                    `/api/forecast?${params.toString()}`,
-                    {
-                      cache:
-                        "no-store"
-                    }
-                  );
-
-                if (!response.ok) {
-                  throw new Error(
-                    "Forecast request failed"
-                  );
-                }
-
-                const data =
-                  (await response.json()) as
-                    ForecastResponse;
-
-                const popupContent =
-                  buildForecastPopup(
-                    location,
-                    data
-                  );
-
-                forecastPopupCache.set(
-                  location.id,
-                  popupContent
-                );
-
-                marker
-                  .setPopupContent(
-                    popupContent
-                  )
-                  .openPopup();
-              } catch (error) {
-                console.error(
-                  "Map forecast error:",
-                  error
-                );
-
-                marker
-                  .setPopupContent(`
-                    <div style="min-width:210px">
-                      <b>${escapeHtml(location.name)}</b>
-                      <br><br>
-                      Data ramalan tidak dapat dimuatkan.
-                      <br>
-                      <small>
-                        Sila cuba semula kemudian.
-                      </small>
-                    </div>
-                  `)
-                  .openPopup();
-              }
-            }
-          );
-        }
-      );
-
-      /*
-       * Ambil amaran rasmi dan
-       * risiko simulasi secara selari.
-       */
       const [
-        alertsResult,
-        risksResult
+        districtRequest,
+        alertRequest
       ] = await Promise.allSettled([
+        fetch(
+          "/api/districts",
+          {
+            cache: "no-store"
+          }
+        ).then(
+          async (response) => {
+            if (!response.ok) {
+              throw new Error(
+                "District request failed"
+              );
+            }
+
+            return (
+              await response.json()
+            ) as DistrictResponse;
+          }
+        ),
+
         fetch(
           "/api/alerts",
           {
@@ -539,30 +643,13 @@ export default function SabahMap() {
           async (response) => {
             if (!response.ok) {
               throw new Error(
-                "Alerts request failed"
+                "Alert request failed"
               );
             }
 
             return (
               await response.json()
             ) as AlertsResponse;
-          }
-        ),
-
-        fetch(
-          "/api/risk",
-          {
-            cache: "no-store"
-          }
-        ).then(
-          async (response) => {
-            if (!response.ok) {
-              throw new Error(
-                "Risk request failed"
-              );
-            }
-
-            return response.json();
           }
         )
       ]);
@@ -574,295 +661,309 @@ export default function SabahMap() {
         return;
       }
 
-      /*
-       * Padankan nama lokasi Sabah
-       * dengan teks amaran rasmi.
-       */
-      if (
-        alertsResult.status ===
-        "fulfilled"
-      ) {
-        const alerts =
-          alertsResult.value
-            .alerts ?? [];
+      const districts =
+        districtRequest.status ===
+          "fulfilled" &&
+        districtRequest.value.status ===
+          "success"
+          ? districtRequest.value
+              .districts
+          : createFallbackDistricts();
 
-        SABAH_MET_LOCATIONS.forEach(
-          (location) => {
-            if (
-              location.latitude ===
-                null ||
-              location.longitude ===
-                null
-            ) {
-              return;
-            }
-
-            const locationName =
-              normalizeText(
-                location.name
-              );
-
-            const matchedAlerts =
-              alerts.filter(
-                (alert) => {
-                  const alertText =
-                    normalizeText(
-                      [
-                        alert.heading_ms,
-                        alert.summary_ms,
-                        alert.warning_ms
-                      ].join(" ")
-                    );
-
-                  return alertText.includes(
-                    locationName
-                  );
-                }
-              );
-
-            if (
-              matchedAlerts.length === 0
-            ) {
-              return;
-            }
-
-            const alertList =
-              matchedAlerts
-                .map(
-                  (alert) => `
-                    <div style="margin-top:9px">
-                      <b>
-                        ${escapeHtml(
-                          alert.heading_ms ??
-                            "Amaran MetMalaysia"
-                        )}
-                      </b>
-                      <br>
-                      <small>
-                        ${escapeHtml(
-                          alert.summary_ms ??
-                            alert.warning_ms ??
-                            ""
-                        )}
-                      </small>
-                      <br>
-                      <small>
-                        Sah hingga:
-                        ${escapeHtml(
-                          formatMalaysiaTime(
-                            alert.valid_to
-                          )
-                        )}
-                      </small>
-                    </div>
-                  `
-                )
-                .join("");
-
-            L.circle(
-              [
-                location.latitude,
-                location.longitude
-              ],
-              {
-                pane:
-                  "warningPane",
-                radius: 18000,
-                color: "#ef4444",
-                weight: 2,
-                fillColor:
-                  "#ef4444",
-                fillOpacity: 0.2
-              }
+      const alerts =
+        alertRequest.status ===
+          "fulfilled" &&
+        alertRequest.value.status ===
+          "success"
+          ? (
+              alertRequest.value
+                .alerts ?? []
+            ).filter(
+              isAlertActive
             )
-              .addTo(
-                warningLayer
-              )
-              .bindPopup(`
-                <div style="min-width:260px">
-                  <b>
-                    ${escapeHtml(location.name)}
-                  </b>
-                  <br>
-                  <small>
-                    OFFICIAL ALERT · METMALAYSIA
-                  </small>
-
-                  ${alertList}
-                </div>
-              `);
-          }
-        );
-      }
+          : [];
 
       /*
-       * Risiko daripada Supabase.
-       * Kekal berlabel SIMULATED.
+       * Marker forecast rasmi.
        */
-      if (
-        risksResult.status ===
-        "fulfilled"
-      ) {
-        const riskRows =
-          extractRiskRows(
-            risksResult.value
-          );
+      districts.forEach(
+        (district) => {
+          if (
+            district.latitude === null ||
+            district.longitude === null
+          ) {
+            return;
+          }
 
-        riskRows.forEach(
-          (risk) => {
-            const district =
-              risk.district ?? "";
+          const color =
+            getForecastColor(
+              district.forecast
+            );
 
-            const location =
-              SABAH_MET_LOCATIONS.find(
-                (item) =>
-                  normalizeText(
-                    item.name
-                  ) ===
-                  normalizeText(
-                    district
-                  )
-              );
-
-            if (
-              !location ||
-              location.latitude ===
-                null ||
-              location.longitude ===
-                null
-            ) {
-              return;
-            }
-
-            const riskLevel =
-              (
-                risk.risk_level ??
-                "MODERATE"
-              ).toUpperCase();
-
-            const color =
-              getRiskColor(
-                riskLevel
-              );
-
-            const score =
-              Number(
-                risk.overall_score ??
-                  0
-              );
-
-            const confidence =
-              Number(
-                risk.confidence_score ??
-                  0
-              );
-
-            const radius =
-              Math.max(
-                14000,
-                Math.min(
-                  40000,
-                  score * 400
-                )
-              );
-
-            L.circle(
+          const marker =
+            L.circleMarker(
               [
-                location.latitude,
-                location.longitude
+                district.latitude,
+                district.longitude
               ],
               {
-                pane: "riskPane",
-                radius,
-                color,
+                radius: 6,
+                color: "#ffffff",
                 weight: 2,
                 fillColor: color,
-                fillOpacity: 0.2
+                fillOpacity: 0.95
+              }
+            );
+
+          marker.bindTooltip(
+            escapeHtml(
+              district.district
+            ),
+            {
+              direction: "top",
+              offset: [0, -5]
+            }
+          );
+
+          marker.bindPopup(
+            buildForecastPopup(
+              district
+            )
+          );
+
+          marker.addTo(
+            forecastLayer
+          );
+        }
+      );
+
+      const matchedAlertIds =
+        new Set<string>();
+
+      /*
+       * Marker pulse bagi daerah
+       * yang dinamakan dalam amaran.
+       */
+      districts.forEach(
+        (district) => {
+          if (
+            district.latitude === null ||
+            district.longitude === null
+          ) {
+            return;
+          }
+
+          const districtName =
+            normalizeText(
+              district.district
+            );
+
+          const matchedAlerts =
+            alerts.filter(
+              (alert) => {
+                const alertText =
+                  normalizeText(
+                    [
+                      alert.heading_ms,
+                      alert.summary_ms,
+                      alert.warning_ms
+                    ].join(" ")
+                  );
+
+                return alertText.includes(
+                  districtName
+                );
+              }
+            );
+
+          if (
+            matchedAlerts.length === 0
+          ) {
+            return;
+          }
+
+          matchedAlerts.forEach(
+            (alert) => {
+              matchedAlertIds.add(
+                alert.id
+              );
+            }
+          );
+
+          L.circle(
+            [
+              district.latitude,
+              district.longitude
+            ],
+            {
+              pane:
+                "warningAreaPane",
+              radius: 18000,
+              color: "#ef4444",
+              weight: 2,
+              fillColor: "#ef4444",
+              fillOpacity: 0.14
+            }
+          ).addTo(
+            warningLayer
+          );
+
+          const pulseIcon =
+            L.divIcon({
+              className:
+                "sdipPulseIcon",
+
+              html: `
+                <span class="sdipPulse">
+                  <span class="sdipPulseRing"></span>
+                  <span class="sdipPulseRing sdipPulseRingDelay"></span>
+                  <span class="sdipPulseCore"></span>
+                </span>
+              `,
+
+              iconSize: [
+                38,
+                38
+              ],
+
+              iconAnchor: [
+                19,
+                19
+              ],
+
+              popupAnchor: [
+                0,
+                -18
+              ]
+            });
+
+          L.marker(
+            [
+              district.latitude,
+              district.longitude
+            ],
+            {
+              pane:
+                "warningMarkerPane",
+              icon: pulseIcon,
+              keyboard: true,
+
+              title:
+                `Amaran aktif: ${district.district}`
+            }
+          )
+            .addTo(
+              warningLayer
+            )
+            .bindTooltip(
+              `Amaran aktif · ${escapeHtml(
+                district.district
+              )}`,
+              {
+                direction: "top",
+                offset: [0, -18]
               }
             )
-              .addTo(riskLayer)
-              .bindPopup(`
-                <div style="min-width:220px">
-                  <b>
-                    ${escapeHtml(district)}
-                  </b>
-                  <br>
-                  <small>
-                    SIMULATED RISK ASSESSMENT
-                  </small>
+            .bindPopup(
+              buildAlertPopup(
+                district.district,
+                matchedAlerts
+              )
+            );
+        }
+      );
 
-                  <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
-
-                  Hazard:
-                  <b>
-                    ${escapeHtml(
-                      risk.hazard_type ??
-                        "Unknown"
-                    )}
-                  </b>
-                  <br>
-
-                  Risk level:
-                  <b>
-                    ${escapeHtml(
-                      riskLevel
-                    )}
-                  </b>
-                  <br>
-
-                  Score:
-                  <b>
-                    ${escapeHtml(
-                      Number.isFinite(
-                        score
-                      )
-                        ? score.toFixed(1)
-                        : "—"
-                    )}
-                  </b>
-                  <br>
-
-                  Confidence:
-                  <b>
-                    ${escapeHtml(
-                      Number.isFinite(
-                        confidence
-                      )
-                        ? `${confidence}%`
-                        : "—"
-                    )}
-                  </b>
-
-                  <hr style="border:0;border-top:1px solid #ddd;margin:8px 0">
-
-                  <small>
-                    Sumber: SDIP Supabase
-                    <br>
-                    Status:
-                    ${escapeHtml(
-                      risk.data_status ??
-                        "simulated"
-                    )}
-                    <br>
-                    Bukan amaran rasmi.
-                  </small>
-                </div>
-              `);
-          }
+      /*
+       * Amaran yang menyebut Sabah
+       * tetapi tidak memberikan daerah
+       * khusus ditunjukkan sebagai marker
+       * negeri, bukan lokasi kejadian tepat.
+       */
+      const generalAlerts =
+        alerts.filter(
+          (alert) =>
+            !matchedAlertIds.has(
+              alert.id
+            )
         );
+
+      if (
+        generalAlerts.length > 0
+      ) {
+        const generalPulseIcon =
+          L.divIcon({
+            className:
+              "sdipPulseIcon",
+
+            html: `
+              <span class="sdipPulse sdipPulseGeneral">
+                <span class="sdipPulseRing"></span>
+                <span class="sdipPulseRing sdipPulseRingDelay"></span>
+                <span class="sdipPulseCore"></span>
+              </span>
+            `,
+
+            iconSize: [
+              42,
+              42
+            ],
+
+            iconAnchor: [
+              21,
+              21
+            ],
+
+            popupAnchor: [
+              0,
+              -20
+            ]
+          });
+
+        L.marker(
+          SABAH_CENTER,
+          {
+            pane:
+              "warningMarkerPane",
+
+            icon:
+              generalPulseIcon,
+
+            title:
+              "Amaran umum Sabah"
+          }
+        )
+          .addTo(warningLayer)
+          .bindTooltip(
+            "Amaran umum Sabah · bukan titik kejadian tepat",
+            {
+              direction: "top",
+              offset: [0, -20]
+            }
+          )
+          .bindPopup(
+            buildGeneralAlertPopup(
+              generalAlerts
+            )
+          );
       }
 
       L.control.layers(
-        {},
         {
-          "Official forecast locations":
-            locationLayer,
+          "Esri Satellite":
+            esriSatellite,
+
+          "Esri Topographic":
+            esriTopographic,
+
+          "OpenStreetMap":
+            openStreetMap
+        },
+        {
+          "Official forecasts":
+            forecastLayer,
 
           "Active official warnings":
-            warningLayer,
-
-          "Simulated risk assessments":
-            riskLayer
+            warningLayer
         },
         {
           collapsed: false,
@@ -897,7 +998,7 @@ export default function SabahMap() {
       />
 
       <div className="mapBadge">
-        OFFICIAL + SIMULATED LAYERS
+        OFFICIAL DATA LAYERS
       </div>
 
       <div className="legend">
@@ -905,32 +1006,137 @@ export default function SabahMap() {
           <i
             style={{
               background:
+                "#22c55e"
+            }}
+          />
+
+          Tiada hujan
+        </span>
+
+        <span>
+          <i
+            style={{
+              background:
                 "#38bdf8"
             }}
           />
-          Official forecast
+
+          Hujan
         </span>
 
         <span>
           <i
             style={{
               background:
-                "#ef4444"
+                "#f59e0b"
             }}
           />
-          Official warning
+
+          Ribut petir
         </span>
 
         <span>
           <i
-            style={{
-              background:
-                "#de9255"
-            }}
+            className="sdipLegendPulse"
           />
-          Simulated risk
+
+          Amaran aktif
         </span>
       </div>
+
+      <style jsx global>{`
+        .sdipPulseIcon {
+          background: transparent !important;
+          border: 0 !important;
+        }
+
+        .sdipPulse {
+          position: relative;
+          display: block;
+          width: 38px;
+          height: 38px;
+        }
+
+        .sdipPulseGeneral {
+          width: 42px;
+          height: 42px;
+        }
+
+        .sdipPulseRing {
+          position: absolute;
+          inset: 0;
+          border: 3px solid
+            rgba(239, 68, 68, 0.9);
+          border-radius: 50%;
+          animation:
+            sdipOfficialAlertPulse
+            1.8s ease-out infinite;
+        }
+
+        .sdipPulseRingDelay {
+          animation-delay: 0.9s;
+        }
+
+        .sdipPulseCore {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 14px;
+          height: 14px;
+          border: 3px solid #ffffff;
+          border-radius: 50%;
+          background: #ef4444;
+          box-shadow:
+            0 0 0 3px
+              rgba(239, 68, 68, 0.3),
+            0 0 18px
+              rgba(239, 68, 68, 0.95);
+          transform:
+            translate(-50%, -50%);
+        }
+
+        .sdipLegendPulse {
+          position: relative;
+          display: inline-block;
+          width: 10px !important;
+          height: 10px !important;
+          border-radius: 50%;
+          background:
+            #ef4444 !important;
+          box-shadow:
+            0 0 0 4px
+              rgba(239, 68, 68, 0.22);
+        }
+
+        @keyframes
+          sdipOfficialAlertPulse {
+          0% {
+            opacity: 1;
+            transform:
+              scale(0.35);
+          }
+
+          70% {
+            opacity: 0.25;
+          }
+
+          100% {
+            opacity: 0;
+            transform:
+              scale(1.35);
+          }
+        }
+
+        @media (
+          prefers-reduced-motion:
+          reduce
+        ) {
+          .sdipPulseRing {
+            animation: none;
+            opacity: 0.45;
+          }
+        }
+      `}</style>
     </div>
   );
 }
