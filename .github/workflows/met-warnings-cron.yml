@@ -1,16 +1,13 @@
 name: MetMalaysia Warning Ingestion
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"
-
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: met-warnings-cron
+  group: met-warnings-manual
   cancel-in-progress: false
 
 jobs:
@@ -20,7 +17,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Call protected SDIP cron endpoint
+      - name: Call protected SDIP warning endpoint
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           CRON_ENDPOINT: https://sdip-blue.vercel.app/api/cron/met-warnings
