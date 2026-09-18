@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 
+import DistrictMonitoring from "@/components/DistrictMonitoring";
 import LiveKpis from "@/components/LiveKpis";
-import LiveRiskRows from "@/components/LiveRiskRows";
 import LiveWeatherCard from "@/components/LiveWeatherCard";
 import OfficialAlert from "@/components/OfficialAlert";
 
@@ -11,6 +11,7 @@ const SabahMap = dynamic(
   () => import("@/components/SabahMap"),
   {
     ssr: false,
+
     loading: () => (
       <div className="mapLoading">
         Loading geographic map…
@@ -108,7 +109,9 @@ export default function Home() {
               >
                 {navigationIcons[index]}
 
-                <span>{item}</span>
+                <span>
+                  {item}
+                </span>
               </button>
             )
           )}
@@ -116,10 +119,12 @@ export default function Home() {
 
         <div className="system">
           <i />
+
           Systems operational
 
           <small>
-            MetMalaysia + Supabase connected
+            MetMalaysia + Supabase
+            connected
           </small>
         </div>
       </aside>
@@ -157,13 +162,14 @@ export default function Home() {
                   </h2>
 
                   <p>
-                    OpenStreetMap base ·
-                    simulated risk overlay
+                    Official forecasts and
+                    warnings · simulated risk
+                    overlay
                   </p>
                 </div>
 
                 <button type="button">
-                  Risk
+                  Layers
                 </button>
               </div>
 
@@ -187,30 +193,42 @@ export default function Home() {
                 <p>
                   The current database
                   assessment contains
-                  simulated hazard, exposure,
-                  vulnerability and capacity
-                  inputs.
+                  simulated hazard,
+                  exposure, vulnerability
+                  and capacity inputs.
                 </p>
 
                 <ul>
                   <li>
                     Location
-                    <b>RANAU</b>
+
+                    <b>
+                      RANAU
+                    </b>
                   </li>
 
                   <li>
                     Hazard
-                    <b>LANDSLIDE</b>
+
+                    <b>
+                      LANDSLIDE
+                    </b>
                   </li>
 
                   <li>
                     Risk level
-                    <b>HIGH</b>
+
+                    <b>
+                      HIGH
+                    </b>
                   </li>
 
                   <li>
                     Confidence
-                    <b>72%</b>
+
+                    <b>
+                      72%
+                    </b>
                   </li>
                 </ul>
 
@@ -246,37 +264,7 @@ export default function Home() {
             </aside>
           </div>
 
-          <section className="panel tablePanel">
-            <div className="panelHead">
-              <div>
-                <h2>
-                  District Risk Monitoring
-                </h2>
-
-                <p>
-                  Live database records from
-                  Supabase PostgreSQL
-                </p>
-              </div>
-            </div>
-
-            <div className="tableWrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>District</th>
-                    <th>Hazard</th>
-                    <th>Score</th>
-                    <th>Risk Level</th>
-                    <th>Confidence</th>
-                    <th>Data Status</th>
-                  </tr>
-                </thead>
-
-                <LiveRiskRows />
-              </table>
-            </div>
-          </section>
+          <DistrictMonitoring />
 
           <section className="panel tablePanel">
             <div className="panelHead">
@@ -296,17 +284,29 @@ export default function Home() {
               <table>
                 <thead>
                   <tr>
-                    <th>Information</th>
-                    <th>Source</th>
-                    <th>Classification</th>
-                    <th>Status</th>
+                    <th>
+                      Information
+                    </th>
+
+                    <th>
+                      Source
+                    </th>
+
+                    <th>
+                      Classification
+                    </th>
+
+                    <th>
+                      Status
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
                   <tr>
                     <td>
-                      Sabah district forecasts
+                      Sabah district
+                      forecasts
                     </td>
 
                     <td>
@@ -324,7 +324,8 @@ export default function Home() {
 
                   <tr>
                     <td>
-                      Sabah weather warnings
+                      Sabah weather
+                      warnings
                     </td>
 
                     <td>
@@ -407,8 +408,8 @@ export default function Home() {
                 </h2>
 
                 <p>
-                  Important information for
-                  public users
+                  Important information
+                  for public users
                 </p>
               </div>
             </div>
@@ -427,19 +428,21 @@ export default function Home() {
 
                   <tr>
                     <td>
-                      Risk assessments marked
-                      SIMULATED are for
-                      development and
-                      interface testing only.
+                      Risk assessments
+                      marked SIMULATED are
+                      for development and
+                      interface testing
+                      only.
                     </td>
                   </tr>
 
                   <tr>
                     <td>
-                      AI-assisted assessments
-                      must not be treated as
-                      official emergency
-                      warnings or evacuation
+                      AI-assisted
+                      assessments must not
+                      be treated as official
+                      emergency warnings or
+                      evacuation
                       instructions.
                     </td>
                   </tr>
