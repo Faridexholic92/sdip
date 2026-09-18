@@ -9,98 +9,63 @@ type NavigationItem = {
   label: string;
   icon: string;
   href: string | null;
-  description?: string;
 };
 
 const navigationItems: NavigationItem[] = [
   {
     label: "Dashboard",
     icon: "⌂",
-    href: "/",
-    description:
-      "Situation overview"
+    href: "/"
   },
   {
     label: "Live Weather",
     icon: "☁",
-    href: "/weather",
-    description:
-      "Official forecasts"
+    href: "/weather"
   },
   {
     label: "Disaster Map",
     icon: "◎",
-    href: "/#map",
-    description:
-      "Weather and warning map"
+    href: "/map"
   },
   {
     label: "Alerts",
     icon: "!",
-    href: "/alerts",
-    description:
-      "Official active alerts"
+    href: "/alerts"
   },
   {
     label: "District Monitoring",
     icon: "▦",
-    href: "/#districts",
-    description:
-      "Sabah district forecasts"
+    href: "/districts"
   },
   {
     label: "Historical Analytics",
     icon: "↗",
-    href: null,
-    description:
-      "Coming soon"
+    href: null
   },
   {
     label: "Reports",
     icon: "▤",
-    href: null,
-    description:
-      "Coming soon"
+    href: null
   },
   {
     label: "Data Sources",
     icon: "◉",
-    href: null,
-    description:
-      "Coming soon"
+    href: null
   }
 ];
-
-function getPathWithoutHash(
-  href: string
-) {
-  return href.split("#")[0] || "/";
-}
 
 function isActivePath(
   pathname: string,
   href: string
 ) {
-  /*
-   * Anchor pada halaman utama seperti
-   * /#map tidak dianggap sebagai route
-   * berasingan.
-   */
-  if (href.includes("#")) {
-    return false;
-  }
-
-  const path =
-    getPathWithoutHash(href);
-
-  if (path === "/") {
+  if (href === "/") {
     return pathname === "/";
   }
 
   return (
-    pathname === path ||
+    pathname === href ||
     pathname.startsWith(
-      `${path}/`
+      `${href}/`
     )
   );
 }
@@ -145,10 +110,7 @@ export default function PortalSidebar() {
                   className="portalNavDisabled"
                   disabled
                   aria-disabled="true"
-                  title={
-                    item.description ??
-                    "Coming soon"
-                  }
+                  title="Coming soon"
                 >
                   <span
                     className="portalNavIcon"
@@ -188,9 +150,6 @@ export default function PortalSidebar() {
                     ? "page"
                     : undefined
                 }
-                title={
-                  item.description
-                }
               >
                 <span
                   className="portalNavIcon"
@@ -205,10 +164,7 @@ export default function PortalSidebar() {
 
                 {item.label ===
                   "Alerts" && (
-                  <span
-                    className="portalNavLive"
-                    aria-label="Live"
-                  >
+                  <span className="portalNavLive">
                     LIVE
                   </span>
                 )}
@@ -226,8 +182,8 @@ export default function PortalSidebar() {
         </div>
 
         <small>
-          MetMalaysia, Supabase and
-          Esri connected
+          MetMalaysia, Supabase and Esri
+          connected
         </small>
       </div>
 
@@ -239,7 +195,6 @@ export default function PortalSidebar() {
         }
 
         .portalNavLink {
-          position: relative;
           display: flex;
           width: 100%;
           height: 44px;
@@ -250,11 +205,9 @@ export default function PortalSidebar() {
           color: var(--muted);
           font-size: 15px;
           text-decoration: none;
-
           transition:
             color 160ms ease,
-            background 160ms ease,
-            transform 160ms ease;
+            background 160ms ease;
         }
 
         .portalNavLink:hover {
@@ -266,8 +219,6 @@ export default function PortalSidebar() {
               0.08
             );
           color: #ffffff;
-          transform:
-            translateX(1px);
         }
 
         .portalNavLink.active {
@@ -279,7 +230,6 @@ export default function PortalSidebar() {
               0.12
             );
           color: #ffffff;
-
           box-shadow:
             inset 2px 0
             var(--blue);
@@ -302,12 +252,8 @@ export default function PortalSidebar() {
         }
 
         .portalNavLive {
-          display: inline-flex;
           padding: 3px 5px;
-          align-items: center;
-          justify-content: center;
           border-radius: 999px;
-
           background:
             rgba(
               34,
@@ -315,11 +261,9 @@ export default function PortalSidebar() {
               94,
               0.12
             );
-
           color: #86efac;
           font-size: 7px;
           font-weight: 800;
-          letter-spacing: 0.06em;
         }
 
         .portalNavDisabled {
@@ -352,7 +296,6 @@ export default function PortalSidebar() {
           color: #71849b;
           font-size: 8px;
           font-style: normal;
-          letter-spacing: 0.05em;
           text-transform: uppercase;
         }
 
