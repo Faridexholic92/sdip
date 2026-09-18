@@ -1,11 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 
 import DistrictMonitoring from "@/components/DistrictMonitoring";
 import LiveKpis from "@/components/LiveKpis";
 import LiveWeatherCard from "@/components/LiveWeatherCard";
 import OfficialAlert from "@/components/OfficialAlert";
+import PortalSidebar from "@/components/PortalSidebar";
 
 const SabahMap = dynamic(
   () => import("@/components/SabahMap"),
@@ -19,30 +21,6 @@ const SabahMap = dynamic(
     )
   }
 );
-
-const navigationItems = [
-  "Dashboard",
-  "Live Weather",
-  "Disaster Map",
-  "Alerts",
-  "Risk Analysis",
-  "District Monitoring",
-  "Historical Analytics",
-  "Reports",
-  "Data Sources"
-];
-
-const navigationIcons = [
-  "⌂",
-  "☁",
-  "◎",
-  "!",
-  "◈",
-  "▦",
-  "↗",
-  "▤",
-  "◉"
-];
 
 const serviceHealth = [
   {
@@ -82,56 +60,7 @@ const serviceHealth = [
 export default function Home() {
   return (
     <main className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <b>SD</b>
-
-          <div>
-            <strong>
-              Sabah Disaster
-              <br />
-              Intelligence Portal
-            </strong>
-
-            <small>
-              Operational starter
-            </small>
-          </div>
-        </div>
-
-        <nav>
-          {navigationItems.map(
-            (item, index) => (
-              <button
-                key={item}
-                className={
-                  index === 0
-                    ? "active"
-                    : ""
-                }
-                type="button"
-              >
-                {navigationIcons[index]}
-
-                <span>
-                  {item}
-                </span>
-              </button>
-            )
-          )}
-        </nav>
-
-        <div className="system">
-          <i />
-
-          Systems operational
-
-          <small>
-            MetMalaysia, Supabase and
-            Esri connected
-          </small>
-        </div>
-      </aside>
+      <PortalSidebar />
 
       <section className="workspace">
         <header>
@@ -146,10 +75,27 @@ export default function Home() {
             </p>
           </div>
 
-          <input
-            aria-label="Search district"
-            placeholder="Search district or locality…"
-          />
+          <Link
+            href="/alerts"
+            style={{
+              display: "inline-flex",
+              minHeight: "40px",
+              padding: "0 14px",
+              alignItems: "center",
+              justifyContent: "center",
+              border:
+                "1px solid rgba(180,204,231,0.2)",
+              borderRadius: "8px",
+              background:
+                "rgba(94,159,232,0.12)",
+              color: "#ffffff",
+              fontSize: "12px",
+              fontWeight: 700,
+              textDecoration: "none"
+            }}
+          >
+            View Alert Center
+          </Link>
         </header>
 
         <div className="content">
@@ -157,7 +103,10 @@ export default function Home() {
 
           <LiveKpis />
 
-          <div className="primary">
+          <div
+            id="map"
+            className="primary"
+          >
             <section className="panel mapPanel">
               <div className="panelHead">
                 <div>
@@ -173,9 +122,14 @@ export default function Home() {
                   </p>
                 </div>
 
-                <button type="button">
-                  Layers
-                </button>
+                <span
+                  style={{
+                    color: "#9fb0c5",
+                    fontSize: "11px"
+                  }}
+                >
+                  Esri + MetMalaysia
+                </span>
               </div>
 
               <SabahMap />
@@ -215,7 +169,9 @@ export default function Home() {
             </aside>
           </div>
 
-          <DistrictMonitoring />
+          <div id="districts">
+            <DistrictMonitoring />
+          </div>
 
           <section className="panel tablePanel">
             <div className="panelHead">
@@ -283,8 +239,7 @@ export default function Home() {
 
                   <tr>
                     <td>
-                      Sabah weather
-                      warnings
+                      Sabah weather warnings
                     </td>
 
                     <td>
@@ -296,8 +251,7 @@ export default function Home() {
                     </td>
 
                     <td>
-                      Supabase Cron every
-                      10 minutes
+                      Cron every 10 minutes
                     </td>
 
                     <td>
@@ -320,8 +274,8 @@ export default function Home() {
                     </td>
 
                     <td>
-                      Generated from stored
-                      MetMalaysia records
+                      Stored MetMalaysia
+                      records
                     </td>
 
                     <td>
@@ -348,29 +302,6 @@ export default function Home() {
 
                     <td>
                       LIVE
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Topographic basemap
-                    </td>
-
-                    <td>
-                      Esri World Topographic
-                      Map
-                    </td>
-
-                    <td>
-                      Geographic reference
-                    </td>
-
-                    <td>
-                      Esri tile service
-                    </td>
-
-                    <td>
-                      AVAILABLE
                     </td>
                   </tr>
 
@@ -432,7 +363,7 @@ export default function Home() {
 
                 <p>
                   Known limitations in the
-                  current official datasets
+                  current datasets
                 </p>
               </div>
             </div>
@@ -485,10 +416,9 @@ export default function Home() {
                     </td>
 
                     <td>
-                      Locations with null
-                      coordinates are not
-                      assigned invented map
-                      positions.
+                      Null coordinates are
+                      not replaced with
+                      invented positions.
                     </td>
                   </tr>
 
@@ -498,16 +428,13 @@ export default function Home() {
                     </td>
 
                     <td>
-                      Warnings containing
                       Sabah-related
-                      information
+                      MetMalaysia bulletins
                     </td>
 
                     <td>
-                      Statewide warnings
-                      without exact district
-                      locations are shown
-                      using a general Sabah
+                      Statewide warnings use
+                      a general reference
                       marker.
                     </td>
                   </tr>
@@ -518,8 +445,8 @@ export default function Home() {
                     </td>
 
                     <td>
-                      No verified dataset
-                      currently connected
+                      No verified risk
+                      dataset connected
                     </td>
 
                     <td>
@@ -551,9 +478,9 @@ export default function Home() {
                 <tbody>
                   <tr>
                     <td>
-                      Official forecasts and
-                      warnings displayed by
-                      SDIP originate from
+                      Forecasts and warnings
+                      displayed by SDIP
+                      originate from
                       MetMalaysia.
                     </td>
                   </tr>
@@ -563,45 +490,33 @@ export default function Home() {
                       Pulse markers represent
                       active official warning
                       areas identified from
-                      MetMalaysia warning
-                      text.
+                      MetMalaysia text.
                     </td>
                   </tr>
 
                   <tr>
                     <td>
-                      A general Sabah pulse
-                      marker does not
-                      represent an exact
-                      incident coordinate.
+                      A general Sabah marker
+                      does not represent an
+                      exact incident
+                      coordinate.
                     </td>
                   </tr>
 
                   <tr>
                     <td>
                       SDIP does not currently
-                      publish unverified or
-                      fabricated disaster
-                      risk scores.
+                      publish fabricated
+                      disaster-risk scores.
                     </td>
                   </tr>
 
                   <tr>
                     <td>
-                      This portal does not
-                      replace instructions
-                      issued by MetMalaysia,
-                      NADMA, JPBN Sabah or
-                      emergency authorities.
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td>
-                      Users must follow
-                      official evacuation,
-                      safety and emergency
-                      instructions.
+                      Always follow official
+                      safety instructions
+                      from emergency
+                      authorities.
                     </td>
                   </tr>
                 </tbody>
@@ -612,20 +527,25 @@ export default function Home() {
       </section>
 
       <nav className="mobileNav">
-        {[
-          "Home",
-          "Map",
-          "Alerts",
-          "Districts",
-          "More"
-        ].map((item) => (
-          <button
-            key={item}
-            type="button"
-          >
-            {item}
-          </button>
-        ))}
+        <Link href="/">
+          Home
+        </Link>
+
+        <a href="#map">
+          Map
+        </a>
+
+        <Link href="/alerts">
+          Alerts
+        </Link>
+
+        <a href="#districts">
+          Districts
+        </a>
+
+        <a href="#sources">
+          Sources
+        </a>
       </nav>
     </main>
   );
